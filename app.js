@@ -3,6 +3,7 @@ var
   logger = require('morgan'),
   bodyParser = require('body-parser'),
 
+  frontend = require('./frontend'),
   db = require('./graph');
 
 
@@ -19,11 +20,18 @@ app.use(bodyParser.urlencoded({
   extended: false
 }));
 
+app.get('/public/*', function(req, res) {
+  frontend.proxyGet(req.params['0']).pipe(res);
+});
+
 app.get('/api/user/:id', function(req, res) {
   res.set({ 'Content-Type': 'application/json' });
 
   db.getUserInfo(req.params.id).then(userInfo => {
     res.send(userInfo);
+  }, error => {
+    console.log(error);
+    res.status(404).send('Unknown user');
   });
 });
 
