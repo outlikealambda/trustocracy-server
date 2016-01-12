@@ -1,6 +1,6 @@
 var
   rp = require('request-promise'),
-  // request = require('request'),
+  join = require('bluebird').join,
   auth = {
     auth: { username: 'neo4j', password: 'graphdb'}
   };
@@ -13,42 +13,16 @@ function getCypherUrl() {
   return getBaseUrl() + 'db/data/transaction/commit';
 }
 
-// function getUser(id) {
-//   var url = getBaseUrl() + 'db/data/node/' + id;
-//   console.log('getting id: ' + id + ' @' + url);
-  // var stream = needle.get(url, options);
-
-  // stream
-  //   .on('readable', function() {
-  //     console.log('got a readable');
-  //
-  //     var chunk;
-  //
-  //     while(chunk = this.read()) {
-  //       // console.log(chunk);
-  //     }
-  //   })
-  //   .on('end', function() {
-  //     console.log('pau');
-  //   });
-
-  // console.log(needle.get(url, options));
-  // needle.get('https://google.com/images/logo.png').pipe(process.stdout);
-
-  // var outStream = needle.get(url, options);
-  //
-  // console.log('isPaused? ', outStream.isPaused());
-  //
-  // return request(url).auth('neo4j', 'graphdb', true);
-
-  // outStream.pipe(process.stdout);
-
-  // return outStream;
-
-// }
-
 function getUserInfo(id) {
+  return join(getUser(id), getUserNeighbors(id), combineUserAndNeighbors);
+}
+
+function getUser(id) {
   return queryNeo4j(createUserQuery(id)).then(transformUserData);
+}
+
+function getUserNeighbors(id) {
+  return queryNeo4j(createNeighborsQuery(id)).then(transformNeighborsData);
 }
 
 function getNearestOpinions(userId, topicId) {
@@ -70,7 +44,12 @@ function queryNeo4j(cypherQuery) {
 }
 
 function createUserQuery(id) {
-  return `MATCH (u:Person {id:${id}})-[relationship]->(friend)
+  return `MATCH (u:Person {id:${id}})
+          RETURN u`;
+}
+
+function createNeighborsQuery(id) {
+  return `MATCH (u:Person {id:${id}})-[relationship]->(friend:Person)
           RETURN u, type(relationship) as r, friend`;
 }
 
@@ -97,23 +76,33 @@ function createStatement(query) {
   };
 }
 
-function transformUserData(neoData) {
-  // destructuring: node needs to run with --harmony_destructuring flag
-  var
-    [{data}] = neoData.results,
-    [{row: [user]}] = data;
-
+function combineUserAndNeighbors(user, neighbors) {
   return {
     user,
-    relationships: data.map(datum => {
-      var [, rel, friend] = datum.row;
-
-      return {
-        rel,
-        friend
-      };
-    })
+    neighbors
   };
+}
+
+function transformUserData(neoData) {
+  var
+    [{data: [{row: [user]}]}] = neoData.results;
+
+  return user;
+}
+
+function transformNeighborsData(neoData) {
+  // destructuring: node needs to run with --harmony_destructuring flag
+  var
+    [{data}] = neoData.results;
+
+  return data.map(datum => {
+    var [, rel, friend] = datum.row;
+
+    return {
+      rel,
+      friend
+    };
+  });
 }
 
 function transformNearestOpinionsData(neoData) {
@@ -132,7 +121,6 @@ function transformNearestOpinionsData(neoData) {
     })
   };
 }
-
 
 module.exports = {
   getNearestOpinions,
