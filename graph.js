@@ -1,46 +1,25 @@
 var
-  rp = require('request-promise'),
   join = require('bluebird').join,
-  auth = {
-    auth: { username: 'neo4j', password: 'graphdb'}
-  };
-
-function getBaseUrl() {
-  return 'http://localhost:7474/';
-}
-
-function getCypherUrl() {
-  return getBaseUrl() + 'db/data/transaction/commit';
-}
+  cq = require('./cypherQuery');
 
 function getUserInfo(id) {
   return join(getUser(id), getUserNeighbors(id), combineUserAndNeighbors);
 }
 
 function getUser(id) {
-  return queryNeo4j(createUserQuery(id)).then(transformUserData);
+  return cq.query(createUserQuery(id)).then(transformUserData);
 }
 
 function getUserNeighbors(id) {
-  return queryNeo4j(createNeighborsQuery(id)).then(transformNeighborsData);
+  return cq.query(createNeighborsQuery(id)).then(transformNeighborsData);
 }
 
 function getNearestOpinions(userId, topicId) {
-  return queryNeo4j(createNearestOpinionsQuery(userId, topicId)).then(transformNearestOpinionsData);
+  return cq.query(createNearestOpinionsQuery(userId, topicId)).then(transformNearestOpinionsData);
 }
 
 function getOpinions(ids) {
-  return queryNeo4j(createOpinionsQuery(ids));
-}
-
-function queryNeo4j(cypherQuery) {
-  var options = Object.assign({
-    method:'POST',
-    url: getCypherUrl(),
-    json: createStatement(cypherQuery)
-  }, auth);
-
-  return rp(options);
+  return cq.query(createOpinionsQuery(ids));
 }
 
 function createUserQuery(id) {
@@ -64,16 +43,6 @@ function createOpinionsQuery(ids) {
   return `MATCH (o:Opinion)
           WHERE o.id IN [${idList}]
           RETURN o`;
-}
-
-function createStatement(query) {
-  return {
-    statements: [
-      {
-        statement: query
-      }
-    ]
-  };
 }
 
 function combineUserAndNeighbors(user, neighbors) {
