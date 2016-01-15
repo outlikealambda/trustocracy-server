@@ -20,9 +20,6 @@ app.use(bodyParser.urlencoded({
   extended: false
 }));
 
-app.get('/public/*', function(req, res) {
-  frontend.proxyGet(req.params['0']).pipe(res);
-});
 
 app.get('/api/user/:id', function(req, res) {
   res.set({ 'Content-Type': 'application/json' });
@@ -45,6 +42,9 @@ app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
   });
 });
 
+app.get('/*', function(req, res) {
+  frontend.proxyGet(req.params['0']).pipe(res);
+});
 
 // Start server
 app.listen(app.get('port'), function() {
