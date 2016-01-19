@@ -1,3 +1,5 @@
+'use strict';
+
 var
   join = require('bluebird').join,
   cq = require('./cypherQuery');
@@ -15,7 +17,13 @@ function getUserNeighbors(id) {
 }
 
 function getNearestOpinions(userId, topicId) {
-  return cq.query(createNearestOpinionsQuery(userId, topicId)).then(transformNearestOpinionsData);
+  console.time('opinions');
+  return cq.query(createNearestOpinionsQuery(userId, topicId))
+    .then(neoData => {
+      console.timeEnd('opinions');
+      return neoData;
+    })
+    .then(transformNearestOpinionsData);
 }
 
 function getOpinions(ids) {
@@ -33,9 +41,9 @@ function createNeighborsQuery(id) {
 }
 
 function createNearestOpinionsQuery(userId, topicId) {
-  return `MATCH (p:Person)-[]->(f:Person)-[rs:TRUSTS_EXPLICITLY*0..]->(ff:Person)-[:OPINES]->(o:Opinion)-[:SIDES_WITH]->(s:Stance)<-[:ADDRESSED_BY]-(t:Topic)
+  return `MATCH (p:Person)-[:TRUSTS_EXPLICITLY|:TRUSTS]->(f:Person)-[rs:TRUSTS_EXPLICITLY|:TRUSTS*0..3]->(ff:Person)-[:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
           WHERE p.id=${userId} AND t.id=${topicId}
-          RETURN f, extract(r in rs | type(r)) as extracted, ff, o, s`;
+          RETURN f, extract(r in rs | type(r)) as extracted, ff, o`;
 }
 
 function createOpinionsQuery(ids) {
@@ -53,16 +61,14 @@ function combineUserAndNeighbors(user, neighbors) {
 }
 
 function transformUserData(neoData) {
-  var
-    [{data: [{row: [user]}]}] = neoData.results;
+  var [{data: [{row: [user]}]}] = neoData.results;
 
   return user;
 }
 
 function transformNeighborsData(neoData) {
   // destructuring: node needs to run with --harmony_destructuring flag
-  var
-    [{data}] = neoData.results;
+  var [{data}] = neoData.results;
 
   return data.map(datum => {
     var [, rel, friend] = datum.row;
@@ -75,20 +81,57 @@ function transformNeighborsData(neoData) {
 }
 
 function transformNearestOpinionsData(neoData) {
-  var [{data}] = neoData.results;
-
-  return {
-    paths: data.map(datum => {
-      var [friend, path, opiner, opinion] = datum.row;
+  const
+    [{data}] = neoData.results,
+    scoredPaths = data.map(datum => {
+      const
+        [friend, path, opiner, opinion] = datum.row,
+        score = scorePath(path);
 
       return {
         friend,
         path,
         opiner,
-        opinion: opinion.id
+        opinion: opinion.id,
+        score,
+        key: friend.id + ':' + opiner.id
       };
-    })
+    });
+
+  // console.log(scoredPaths);
+
+  return {
+    paths: getUniqueStartFinishCombos(scoredPaths)
   };
+
+}
+
+function getUniqueStartFinishCombos(scoredPaths) {
+  const map = new Map();
+
+  for (let sp of scoredPaths) {
+    const existingPath = map.get(sp.key);
+
+    if (!existingPath || sp.score < existingPath.score) {
+      map.set(sp.key, sp);
+    }
+  }
+
+  return [...map.values()];
+}
+
+function scorePath(path) {
+  return path.reduce((score, step) => {
+    switch (step) {
+    case 'TRUSTS_EXPLICITLY':
+      return score + 1;
+    case 'TRUSTS':
+      return score + 2;
+    default:
+      console.log(`What kind of path is this: ${step}?`);
+      return score;
+    }
+  }, 0);
 }
 
 module.exports = {
