@@ -1,3 +1,5 @@
+'use strict';
+
 var
   express = require('express'),
   logger = require('morgan'),
@@ -37,9 +39,18 @@ app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
 
   res.set({ 'Content-Type': 'application/json' });
 
-  db.getNearestOpinions(userId, topicId).then(nearestOpinions => {
-    res.send(nearestOpinions);
-  });
+  db.getNearestOpinions(userId, topicId)
+    .then(nearest => res.send(nearest));
+});
+
+app.get('/api/opinions/:ids', (req, res) => {
+  const opinionIds = req.params.ids.split(',');
+
+  console.log(opinionIds);
+
+  db.getOpinions(opinionIds)
+    .then(logPassThrough('opinions:'))
+    .then(opinions => res.send(opinions));
 });
 
 app.get('/*', function(req, res) {
@@ -50,3 +61,11 @@ app.get('/*', function(req, res) {
 app.listen(app.get('port'), function() {
   console.log('Starting node');
 });
+
+function logPassThrough(msg) {
+  return function(data) {
+    console.log(msg, data);
+    return data;
+
+  };
+}

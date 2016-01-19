@@ -27,7 +27,8 @@ function getNearestOpinions(userId, topicId) {
 }
 
 function getOpinions(ids) {
-  return cq.query(createOpinionsQuery(ids));
+  return cq.query(createOpinionsQuery(ids))
+    .then(transformOpinions);
 }
 
 function createUserQuery(id) {
@@ -61,22 +62,32 @@ function combineUserAndNeighbors(user, neighbors) {
 }
 
 function transformUserData(neoData) {
-  var [{data: [{row: [user]}]}] = neoData.results;
+  const [{data: [{row: [user]}]}] = neoData.results;
 
   return user;
 }
 
 function transformNeighborsData(neoData) {
   // destructuring: node needs to run with --harmony_destructuring flag
-  var [{data}] = neoData.results;
+  const [{data}] = neoData.results;
 
   return data.map(datum => {
-    var [, rel, friend] = datum.row;
+    const [, rel, friend] = datum.row;
 
     return {
       rel,
       friend
     };
+  });
+}
+
+function transformOpinions(neoData) {
+  const [{data}] = neoData.results;
+
+  return data.map(datum => {
+    const [opinion] = datum.row;
+
+    return opinion;
   });
 }
 
