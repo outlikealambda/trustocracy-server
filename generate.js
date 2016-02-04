@@ -2,8 +2,9 @@
 
 const
   generateName = require('sillyname'),
-  cq = require('./cypherQuery'),
+  cq = require('./cypher-query'),
   faker = require('faker'),
+  log = require('./logger'),
   graphSize = 10000,
   nodesPerOpinion = 400,
   explicitProbability = {
@@ -50,7 +51,7 @@ createUser(0, [])
   .then(() => buildRelationships(0, 'TRUSTS', regularProbability))
   .then(assignOpinions)
   .catch(error => {
-    console.log(error);
+    log.info(error);
   });
 
 // recursive call
@@ -204,6 +205,6 @@ function isHappens(probability) {
 
 function logCreation(id, label) {
   if ((id + 1) % 100 === 0) {
-    console.log(`finished creating ${id+1} ${label}`);
+    log.info(`finished creating ${id+1} ${label}`);
   }
 }

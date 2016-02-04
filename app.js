@@ -5,8 +5,10 @@ var
   logger = require('morgan'),
   bodyParser = require('body-parser'),
 
+  idGenerator = require('./id-generator'),
   frontend = require('./frontend'),
-  db = require('./graph');
+  db = require('./graph'),
+  log = require('./logger');
 
 
 var app = express();
@@ -22,50 +24,68 @@ app.use(bodyParser.urlencoded({
   extended: false
 }));
 
+// gets
 
 app.get('/api/user/:id', function(req, res) {
   res.set({ 'Content-Type': 'application/json' });
 
-  db.getUserInfo(req.params.id).then(userInfo => {
-    res.send(userInfo);
-  }, error => {
-    console.log(error);
-    res.status(404).send('Unknown user');
-  });
+  db.getUserInfo(req.params.id)
+    .then(userInfo => {
+      res.send(userInfo).end();
+    }, error => {
+      log.info(error);
+      res.status(404).end('Unknown user');
+    });
 });
 
 app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
-  var {userId, topicId} = req.params;
+  const {userId, topicId} = req.params;
 
   res.set({ 'Content-Type': 'application/json' });
 
   db.getNearestOpinions(userId, topicId)
-    .then(nearest => res.send(nearest));
+    .then(nearest => res.send(nearest).end());
 });
 
 app.get('/api/opinions/:ids', (req, res) => {
   const opinionIds = req.params.ids.split(',');
 
-  console.log(opinionIds);
+  log.info(opinionIds);
 
   db.getOpinions(opinionIds)
-    .then(logPassThrough('opinions:'))
-    .then(opinions => res.send(opinions));
+    .then(log.promise('opinions:'))
+    .then(opinions => res.send(opinions).end());
+});
+
+app.get('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
+  const {userId, topicId} = req.params;
+
+  db.getOrCreateOpinion(userId, topicId)
+    .then(opinion => res.send(opinion).end());
+
 });
 
 app.get('/*', function(req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);
 });
 
-// Start server
-app.listen(app.get('port'), function() {
-  console.log('Starting node');
+// posts
+
+app.post('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
+  const
+    {userId, topicId} = req.params,
+    opinion = req.body;
+
+  log.info('opinion write params', {userId, topicId, opinion});
+  res.set({ 'Content-Type': 'application/json' });
+
+  db.publishOpinion(userId, topicId, opinion)
+    .then(opinion => res.send(opinion).end());
 });
 
-function logPassThrough(msg) {
-  return function(data) {
-    console.log(msg, data);
-    return data;
-
-  };
-}
+// Start server
+idGenerator.init().then(() => {
+  app.listen(app.get('port'), function() {
+    log.info('Starting node');
+  });
+});
