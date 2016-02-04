@@ -29,6 +29,11 @@ function publishOpinion(userId, topicId, opinion) {
     .then(transformOpinion);
 }
 
+function getOpinionById(opinionId) {
+  return cq.query(buildGetOpinionByIdQuery(opinionId))
+    .then(transformOpinion);
+}
+
 function getOrCreateOpinion(userId, topicId) {
   return cq.query(buildGetOpinionQuery(userId, topicId))
     .then(transformOpinion)
@@ -87,6 +92,12 @@ function buildCreateOpinionQuery(userId, topicId, opinionId) {
           WHERE u.id=${userId} AND t.id=${topicId}
           CREATE (o:Opinion { id: ${opinionId} }),
           (u)-[:THINKS]->(o)-[:ADDRESSES]->(t)
+          RETURN o`;
+}
+
+function buildGetOpinionByIdQuery(opinionId) {
+  return `MATCH (o:Opinion)
+          WHERE o.id = ${opinionId}
           RETURN o`;
 }
 
@@ -231,6 +242,7 @@ module.exports = {
   getNearestOpinions,
   getOpinions,
   getUserInfo,
+  getOpinionById,
   getOrCreateOpinion,
   publishOpinion
 };

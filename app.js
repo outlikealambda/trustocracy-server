@@ -47,6 +47,15 @@ app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
     .then(nearest => res.send(nearest).end());
 });
 
+app.get('/api/opinion/:opinionId', (req, res) => {
+  const {opinionId} = req.params;
+
+  log.info('opinion endpoint', opinionId);
+
+  db.getOpinionById(opinionId)
+    .then(opinion => res.send(opinion).end());
+});
+
 app.get('/api/opinions/:ids', (req, res) => {
   const opinionIds = req.params.ids.split(',');
 
