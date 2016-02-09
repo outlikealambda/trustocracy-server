@@ -31,7 +31,7 @@ app.get('/api/user/:id', function(req, res) {
 
   db.getUserInfo(req.params.id)
     .then(userInfo => {
-      res.send(userInfo).end();
+      res.send(userInfo.user).end();
     }, error => {
       log.info(error);
       res.status(404).end('Unknown user');
