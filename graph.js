@@ -13,30 +13,29 @@ function getUserInfo(id) {
 }
 
 function getUser(id) {
-  return cq.query(buildUserQuery(id)).then(transformUserData);
+  return cq.query(queryBuilder.user(id)).then(transformer.user);
 }
 
 function getUserNeighbors(id) {
-  return cq.query(buildNeighborsQuery(id)).then(transformNeighborsData);
+  return cq.query(queryBuilder.neighbors(id)).then(transformer.neighbors);
 }
 
 function publishOpinion(userId, topicId, opinion) {
-
   // update/build the OPINES relationship with a timestamp
-  return cq.query(buildMarkAsPublishedQuery(userId, topicId))
+  return cq.query(queryBuilder.markPublished(userId, topicId))
     // write the new vals
-    .then(() => cq.queryWithParams(buildWriteOpinionQuery(opinion.id), opinion))
-    .then(transformOpinion);
+    .then(() => cq.queryWithParams(queryBuilder.writeOpinion(opinion.id), opinion))
+    .then(transformer.opinion);
 }
 
 function getOpinionById(opinionId) {
-  return cq.query(buildGetOpinionByIdQuery(opinionId))
-    .then(transformOpinion);
+  return cq.query(queryBuilder.opinionById(opinionId))
+    .then(transformer.opinion);
 }
 
 function getOrCreateOpinion(userId, topicId) {
-  return cq.query(buildGetOpinionQuery(userId, topicId))
-    .then(transformOpinion)
+  return cq.query(queryBuilder.getOpinionByUserTopic(userId, topicId))
+    .then(transformer.opinion)
     // if it doesn't exist, create it
     .then(opinion => opinion ? opinion : createOpinion(userId, topicId))
     // add in any missing fields.  lazy migrations could eventually run here
@@ -45,84 +44,146 @@ function getOrCreateOpinion(userId, topicId) {
 }
 
 function createOpinion(userId, topicId) {
-  return cq.query(buildCreateOpinionQuery(userId, topicId, idGenerator.nextOpinionId()))
-    .then(transformOpinion);
+  return cq.query(queryBuilder.createOpinion(userId, topicId, idGenerator.nextOpinionId()))
+    .then(transformer.opinion);
 }
 
 function getNearestOpinions(userId, topicId) {
   log.time('opinions');
-  return cq.query(buildNearestOpinionsQuery(userId, topicId))
+  return cq.query(queryBuilder.nearest(userId, topicId))
     .then(neoData => {
       log.timeEnd('opinions');
       return neoData;
     })
-    .then(transformNearestOpinionsData);
+    .then(transformer.nearest);
 }
 
 function getOpinions(ids) {
-  return cq.query(buildOpinionsQuery(ids))
-    .then(transformOpinions);
+  return cq.query(queryBuilder.opinions(ids))
+    .then(transformer.opinions);
 }
 
-function buildUserQuery(id) {
-  return `MATCH (u:Person {id:${id}})
-          RETURN u`;
+function getTopic(id) {
+  return cq.query(queryBuilder.topic(id))
+    .then(transformer.topic);
 }
 
-function buildNeighborsQuery(id) {
-  return `MATCH (u:Person {id:${id}})-[relationship]->(friend:Person)
-          RETURN u, type(relationship) as r, friend`;
+function getTopics() {
+  return cq.query(queryBuilder.topics())
+    .then(transformer.topics);
 }
 
-function buildNearestOpinionsQuery(userId, topicId) {
-  return `MATCH (p:Person)-[:TRUSTS_EXPLICITLY|:TRUSTS]->(f:Person)-[rs:TRUSTS_EXPLICITLY|:TRUSTS*0..3]->(ff:Person)-[:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
-          WHERE p.id=${userId} AND t.id=${topicId}
-          RETURN f, extract(r in rs | type(r)) as extracted, ff, o`;
-}
+const queryBuilder = {
+  user: function(id) {
+    return `MATCH (u:Person {id:${id}})
+            RETURN u`;
+  },
+  neighbors: function(id) {
+    return `MATCH (u:Person {id:${id}})-[relationship]->(friend:Person)
+            RETURN u, type(relationship) as r, friend`;
+  },
+  nearest: function(userId, topicId) {
+    return `MATCH (p:Person)-[:TRUSTS_EXPLICITLY|:TRUSTS]->(f:Person)-[rs:TRUSTS_EXPLICITLY|:TRUSTS*0..3]->(ff:Person)-[:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
+            WHERE p.id=${userId} AND t.id=${topicId}
+            RETURN f, extract(r in rs | type(r)) as extracted, ff, o`;
+  },
+  opinions: function(ids) {
+    const idList = ids.join();
+    return `MATCH (o:Opinion)
+            WHERE o.id IN [${idList}]
+            RETURN o`;
+  },
+  createOpinion: function(userId, topicId, opinionId) {
+    return `MATCH (u:Person), (t:Topic)
+            WHERE u.id=${userId} AND t.id=${topicId}
+            CREATE (o:Opinion { id: ${opinionId} }),
+            (u)-[:THINKS]->(o)-[:ADDRESSES]->(t)
+            RETURN o`;
+  },
+  opinionById: function(opinionId) {
+    return `MATCH (o:Opinion)
+            WHERE o.id = ${opinionId}
+            RETURN o`;
+  },
+  opinionByUserTopic: function(userId, topicId) {
+    return `MATCH (p:Person)-[:THINKS|:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
+            WHERE p.id = ${userId} AND t.id = ${topicId}
+            RETURN o`;
+  },
+  markPublished: function(userId, topicId) {
+    return `MATCH (p:Person)-[:THINKS|:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
+            WHERE p.id = ${userId} AND t.id = ${topicId}
+            MERGE (p)-[opines:OPINES]->(o)
+            ON CREATE SET opines.created = timestamp(), opines.updated = timestamp()
+            ON MATCH SET opines.updated = timestamp()
+            RETURN opines`;
+  },
+  // props are passed in via queryWithParams 2nd arg
+  writeOpinion: function(opinionId) {
+    return `MATCH (o:Opinion)
+            WHERE o.id = ${opinionId}
+            SET o = { props }
+            RETURN o`;
+  },
+  topic: function(topicId) {
+    return `MATCH (t:Topic)
+            WHERE t.id = ${topicId}
+            RETURN t`;
+  },
+  topics: function() {
+    return `MATCH (t:Topic) RETURN t`;
+  }
+};
 
-function buildOpinionsQuery(ids) {
-  const idList = ids.join();
-  return `MATCH (o:Opinion)
-          WHERE o.id IN [${idList}]
-          RETURN o`;
-}
 
-function buildCreateOpinionQuery(userId, topicId, opinionId) {
-  return `MATCH (u:Person), (t:Topic)
-          WHERE u.id=${userId} AND t.id=${topicId}
-          CREATE (o:Opinion { id: ${opinionId} }),
-          (u)-[:THINKS]->(o)-[:ADDRESSES]->(t)
-          RETURN o`;
-}
+const transformer = {
+  user : extractFirstResult,
 
-function buildGetOpinionByIdQuery(opinionId) {
-  return `MATCH (o:Opinion)
-          WHERE o.id = ${opinionId}
-          RETURN o`;
-}
+  opinion : extractFirstResult,
 
-function buildGetOpinionQuery(userId, topicId) {
-  return `MATCH (p:Person)-[:THINKS|:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
-          WHERE p.id = ${userId} AND t.id = ${topicId}
-          RETURN o`;
-}
+  opinions : extractFirstResults,
 
-function buildMarkAsPublishedQuery(userId, topicId) {
-  return `MATCH (p:Person)-[:THINKS|:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
-          WHERE p.id = ${userId} AND t.id = ${topicId}
-          MERGE (p)-[opines:OPINES]->(o)
-          ON CREATE SET opines.created = timestamp(), opines.updated = timestamp()
-          ON MATCH SET opines.updated = timestamp()
-          RETURN opines`;
-}
+  topic : extractFirstResult,
 
-// props are passed in via queryWithParams 2nd arg
-function buildWriteOpinionQuery(opinionId) {
-  return `MATCH (o:Opinion)
-          WHERE o.id = ${opinionId}
-          SET o = { props }
-          RETURN o`;
-}
+  topics : extractFirstResults,
+
+  neighbors : function(neoData) {
+    // destructuring: node needs to run with --harmony_destructuring flag
+    const [{data}] = neoData.results;
+
+    return data.map(datum => {
+      const [, rel, friend] = datum.row;
+
+      return {
+        rel,
+        friend
+      };
+    });
+  },
+
+  nearest : function(neoData) {
+    const
+      [{data}] = neoData.results,
+      scoredPaths = data.map(datum => {
+        const
+          [friend, path, opiner, opinion] = datum.row,
+          score = scorePath(path);
+
+        return {
+          friend,
+          path,
+          opiner,
+          opinion: opinion.id,
+          score,
+          key: friend.id + ':' + opiner.id
+        };
+      });
+
+    return {
+      paths: getUniqueStartFinishCombos(scoredPaths)
+    };
+  }
+};
 
 function combineUserAndNeighbors(user, neighbors) {
   return {
@@ -131,11 +192,8 @@ function combineUserAndNeighbors(user, neighbors) {
   };
 }
 
-const transformUserData = extractSingleResult;
-
-const transformOpinion = extractSingleResult;
-
-function extractSingleResult(neoData) {
+// pulls out the first item in the first fow
+function extractFirstResult(neoData) {
   if (noResults(neoData)) {
     return null;
   }
@@ -143,6 +201,15 @@ function extractSingleResult(neoData) {
   const [{data: [{row: [first]}]}] = neoData.results;
 
   return first;
+}
+
+// pulls out the first item in each row
+function extractFirstResults(neoData) {
+  const [{data}] = neoData.results;
+
+  return data.map(datum => {
+    return datum.row[0];
+  });
 }
 
 function noResults(neoData) {
@@ -162,53 +229,6 @@ function noResults(neoData) {
   return false;
 }
 
-function transformNeighborsData(neoData) {
-  // destructuring: node needs to run with --harmony_destructuring flag
-  const [{data}] = neoData.results;
-
-  return data.map(datum => {
-    const [, rel, friend] = datum.row;
-
-    return {
-      rel,
-      friend
-    };
-  });
-}
-
-function transformOpinions(neoData) {
-  const [{data}] = neoData.results;
-
-  return data.map(datum => {
-    const [opinion] = datum.row;
-
-    return opinion;
-  });
-}
-
-function transformNearestOpinionsData(neoData) {
-  const
-    [{data}] = neoData.results,
-    scoredPaths = data.map(datum => {
-      const
-        [friend, path, opiner, opinion] = datum.row,
-        score = scorePath(path);
-
-      return {
-        friend,
-        path,
-        opiner,
-        opinion: opinion.id,
-        score,
-        key: friend.id + ':' + opiner.id
-      };
-    });
-
-  return {
-    paths: getUniqueStartFinishCombos(scoredPaths)
-  };
-
-}
 
 function getUniqueStartFinishCombos(scoredPaths) {
   const map = new Map();
@@ -244,5 +264,7 @@ module.exports = {
   getUserInfo,
   getOpinionById,
   getOrCreateOpinion,
-  publishOpinion
+  publishOpinion,
+  getTopic,
+  getTopics
 };

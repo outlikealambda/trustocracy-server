@@ -74,6 +74,18 @@ app.get('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
 
 });
 
+app.get('/api/topic/:topicId', (req, res) => {
+  const {topicId} = req.params;
+
+  db.getTopic(topicId)
+    .then(topic => res.send(topic).end());
+});
+
+app.get('/api/topic', (req, res) => {
+  db.getTopics()
+    .then(topics => res.send(topics).end());
+});
+
 app.get('/*', function(req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);
 });
