@@ -2,11 +2,15 @@
 
 const
   generateName = require('sillyname'),
-  cq = require('./cypher-query'),
   faker = require('faker'),
+  idGenerator = require('./id-generator'),
+  cq = require('./cypher-query'),
   log = require('./logger'),
-  graphSize = 10000,
-  nodesPerOpinion = 400,
+  startingUserId = 0,
+  startingTopicId = 0,
+  finalTopicId = 9,
+  USER_COUNT = 5000,
+  NODES_PER_OPINION = 300,
   explicitProbability = {
     reciprocity: 0.7,
     ltOne: () => 1,
@@ -20,10 +24,18 @@ const
     gteThree: count => Math.pow(0.86, count - 2)
   };
 
+createUser(startingUserId, [])
+  .then(() => buildRelationships(startingUserId, 'TRUSTS_EXPLICITLY', explicitProbability))
+  .then(() => buildRelationships(startingUserId, 'TRUSTS', regularProbability))
+  .then(() => assignOpinions(startingTopicId, finalTopicId))
+  .catch(error => {
+    log.info(error);
+  });
+
 // recursively creates users, as neo doesn't like creating 10000 in a single
 // statement -- MUCH slower though.  let's try batching 500 per call
 function createUser(id, createStatements) {
-  if (id >= graphSize) {
+  if (id >= USER_COUNT) {
     return createStatements.length ? finishCreateQuery(createStatements) : null;
   }
 
@@ -36,7 +48,8 @@ function createUser(id, createStatements) {
   createStatements.push(query);
 
   if (id % 500 === 0) {
-    return finishCreateQuery(createStatements).then(() => createUser(id + 1, []));
+    return finishCreateQuery(createStatements)
+      .then(() => createUser(id + 1, []));
   } else {
     return createUser(id + 1, createStatements);
   }
@@ -46,17 +59,9 @@ function finishCreateQuery(createStatements) {
   return cq.query('CREATE ' + createStatements.join());
 }
 
-createUser(0, [])
-  .then(() => buildRelationships(0, 'TRUSTS_EXPLICITLY', explicitProbability))
-  .then(() => buildRelationships(0, 'TRUSTS', regularProbability))
-  .then(assignOpinions)
-  .catch(error => {
-    log.info(error);
-  });
-
 // recursive call
 function buildRelationships(id, relationship, probs) {
-  if (id >= graphSize) {
+  if (id >= USER_COUNT) {
     return;
   }
 
@@ -118,7 +123,7 @@ function generateNewIds(sourceId, existingIds, probability) {
   // console.log('sourceId: ' + sourceId + ', reciprocal relationships: ', existingIds);
 
   while(shouldGenerateNewId(ids.length + existingIds.length, probability)) {
-    ids.push(generateNewId(sourceId, existingIds, ids, graphSize));
+    ids.push(generateNewId(sourceId, existingIds, ids, USER_COUNT));
   }
 
   // console.log('Creating new relationships for ' + sourceId, ids);
@@ -167,30 +172,48 @@ function createRelationship(sourceId, targetId, relationship) {
   return cq.query(query).then(() => targetId);
 }
 
-function assignOpinions() {
+function assignOpinions(topicId, finalTopicId) {
   const
-    opinionCount = Math.ceil(graphSize/nodesPerOpinion),
-    opinionIds = [];
+    opinionCount = Math.ceil(USER_COUNT/(NODES_PER_OPINION + faker.random.number(200))),
+    userIds = [];
 
-  for (let i=0; i < opinionCount; i++) {
-    opinionIds.push(generateNewId(-1, opinionIds, [], graphSize));
+  if (topicId > finalTopicId) {
+    return null;
   }
 
-  return createTopic().then(() => opinionIds.map(createOpinion));
+  // find some users who can have an opinion
+  for (let i = 0; i < opinionCount; i++) {
+    userIds.push(generateNewId(-1, userIds, [], USER_COUNT));
+  }
+
+  return createTopic(topicId)
+    .then(() =>
+      userIds
+        .map(userId => {
+          return {
+            userId,
+            opinionId: idGenerator.nextOpinionId(),
+            topicId: topicId
+          };
+        })
+        .map(createOpinion))
+    .then(() => assignOpinions(topicId + 1, finalTopicId));
 }
 
-function createTopic() {
-  const query =
-    `CREATE (t:Topic {id:0, text: "The Biggest Thing"})`;
+function createTopic(topicId) {
+  const
+    title = faker.lorem.words(faker.random.number(6) + 3).join(' '),
+    query = `CREATE (t:Topic {id:${topicId}, text:"${title}"})`;
 
-  return cq.query(query).then(() => 0);
+  return cq.query(query);
 }
 
-function createOpinion(userId, opinionId) {
+function createOpinion({userId, opinionId, topicId}) {
   const
     text = faker.lorem.paragraphs(generateRandomInt(1, 5)),
     query =
-      `MATCH (a:Person), (t:Topic) WHERE a.id=${userId} AND t.id=0
+      `MATCH (a:Person), (t:Topic)
+       WHERE a.id=${userId} AND t.id=${topicId}
        CREATE (o:Opinion {id:${opinionId}, text:"${text}"}),
               (a)-[:OPINES]->(o)-[:ADDRESSES]->(t)`;
 
