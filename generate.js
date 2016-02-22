@@ -3,13 +3,14 @@
 const
   generateName = require('sillyname'),
   faker = require('faker'),
+  forcem = require('forcem-ipsum'),
   idGenerator = require('./id-generator'),
   cq = require('./cypher-query'),
   log = require('./logger'),
   startingUserId = 0,
   startingTopicId = 0,
   finalTopicId = 9,
-  USER_COUNT = 5000,
+  USER_COUNT = 3000,
   NODES_PER_OPINION = 300,
   explicitProbability = {
     reciprocity: 0.7,
@@ -159,6 +160,7 @@ function generateNewId(sourceId, oldIds, newIds, maxVal) {
   return generateNewId(sourceId, oldIds, newIds, maxVal);
 }
 
+// [min, max)
 function generateRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min) + min);
 }
@@ -210,7 +212,8 @@ function createTopic(topicId) {
 
 function createOpinion({userId, opinionId, topicId}) {
   const
-    text = faker.lorem.paragraphs(generateRandomInt(1, 5)),
+    paragraphs = forcem('e' + generateRandomInt(4, 7), generateRandomInt(1, 6)),
+    text = paragraphs.join('\n\n'),
     query =
       `MATCH (a:Person), (t:Topic)
        WHERE a.id=${userId} AND t.id=${topicId}
