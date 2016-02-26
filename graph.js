@@ -33,6 +33,16 @@ function getOpinionById(opinionId) {
     .then(transformer.opinion);
 }
 
+function getOpinionsByIds(ids) {
+  return cq.query(queryBuilder.opinionsByIds(ids))
+    .then(transformer.opinionsByIds);
+}
+
+function getOpinionsByTopic(topicId) {
+  return cq.query(queryBuilder.opinionsByTopic(topicId))
+    .then(transformer.opinionsByTopic);
+}
+
 function getOrCreateOpinion(userId, topicId) {
   return cq.query(queryBuilder.getOpinionByUserTopic(userId, topicId))
     .then(transformer.opinion)
@@ -56,11 +66,6 @@ function getNearestOpinions(userId, topicId) {
       return neoData;
     })
     .then(transformer.nearest);
-}
-
-function getOpinions(ids) {
-  return cq.query(queryBuilder.opinions(ids))
-    .then(transformer.opinions);
 }
 
 function getTopic(id) {
@@ -87,11 +92,17 @@ const queryBuilder = {
             WHERE p.id=${userId} AND t.id=${topicId}
             RETURN f, extract(r in rs | type(r)) as extracted, ff, o`;
   },
-  opinions: function(ids) {
+  opinionsByIds: function(ids) {
     const idList = ids.join();
     return `MATCH (o:Opinion)
             WHERE o.id IN [${idList}]
             RETURN o`;
+  },
+  opinionsByTopic: function (topicId) {
+    return `MATCH (o:Opinion) --> (t:Topic)
+            WHERE t.id = ${topicId}
+            RETURN o`;
+
   },
   createOpinion: function(userId, topicId, opinionId) {
     return `MATCH (u:Person), (t:Topic)
@@ -141,7 +152,9 @@ const transformer = {
 
   opinion : extractFirstResult,
 
-  opinions : extractFirstResults,
+  opinionsByIds : extractFirstResults,
+
+  opinionsByTopic : extractFirstResults,
 
   topic : extractFirstResult,
 
@@ -260,9 +273,10 @@ function scorePath(path) {
 
 module.exports = {
   getNearestOpinions,
-  getOpinions,
   getUserInfo,
   getOpinionById,
+  getOpinionsByIds,
+  getOpinionsByTopic,
   getOrCreateOpinion,
   publishOpinion,
   getTopic,

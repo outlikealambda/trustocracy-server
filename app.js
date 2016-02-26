@@ -14,7 +14,6 @@ var
 var app = express();
 
 // Configuration
-
 app.set('port', process.env.PORT || 3714);
 
 // from 2.0 example
@@ -66,12 +65,18 @@ app.get('/api/opinions/:ids', (req, res) => {
     .then(opinions => res.send(opinions).end());
 });
 
+app.get('/api/topic/:topicId/opinion', (req, res) => {
+  const topicId = req.params.topicId;
+
+  db.getOpinionsByTopic(topicId)
+    .then(opinions => res.send(opinions).end());
+});
+
 app.get('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
   const {userId, topicId} = req.params;
 
   db.getOrCreateOpinion(userId, topicId)
     .then(opinion => res.send(opinion).end());
-
 });
 
 app.get('/api/topic/:topicId', (req, res) => {
@@ -86,12 +91,15 @@ app.get('/api/topic', (req, res) => {
     .then(topics => res.send(topics).end());
 });
 
-app.get('/*', function(req, res) {
+// just so the catchall doesn't get it and fail
+// if the elm server isn't running
+app.get('/favicon.ico', () => {});
+
+app.use(function(req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);
 });
 
 // posts
-
 app.post('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
   const
     {userId, topicId} = req.params,
