@@ -95,7 +95,7 @@ app.get('/api/topic', (req, res) => {
 // if the elm server isn't running
 app.get('/favicon.ico', () => {});
 
-app.use(function(req, res) {
+app.get('/*', function(req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);
 });
 
