@@ -94,14 +94,14 @@ const queryBuilder = {
   },
   opinionsByIds: function(ids) {
     const idList = ids.join();
-    return `MATCH (o:Opinion)
+    return `MATCH (p:Person) --> (o:Opinion)
             WHERE o.id IN [${idList}]
-            RETURN o`;
+            RETURN o, p`;
   },
   opinionsByTopic: function (topicId) {
-    return `MATCH (o:Opinion) --> (t:Topic)
+    return `MATCH (p:Person) --> (o:Opinion) --> (t:Topic)
             WHERE t.id = ${topicId}
-            RETURN o`;
+            RETURN o, p`;
 
   },
   createOpinion: function(userId, topicId, opinionId) {
@@ -109,17 +109,17 @@ const queryBuilder = {
             WHERE u.id=${userId} AND t.id=${topicId}
             CREATE (o:Opinion { id: ${opinionId} }),
             (u)-[:THINKS]->(o)-[:ADDRESSES]->(t)
-            RETURN o`;
+            RETURN o, u`;
   },
   opinionById: function(opinionId) {
-    return `MATCH (o:Opinion)
+    return `MATCH (p:Person) --> (o:Opinion)
             WHERE o.id = ${opinionId}
-            RETURN o`;
+            RETURN o, p`;
   },
   opinionByUserTopic: function(userId, topicId) {
     return `MATCH (p:Person)-[:THINKS|:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
             WHERE p.id = ${userId} AND t.id = ${topicId}
-            RETURN o`;
+            RETURN o, p`;
   },
   markPublished: function(userId, topicId) {
     return `MATCH (p:Person)-[:THINKS|:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
@@ -131,10 +131,10 @@ const queryBuilder = {
   },
   // props are passed in via queryWithParams 2nd arg
   writeOpinion: function(opinionId) {
-    return `MATCH (o:Opinion)
+    return `MATCH (p:Person) --> (o:Opinion)
             WHERE o.id = ${opinionId}
             SET o = { props }
-            RETURN o`;
+            RETURN o, p`;
   },
   topic: function(topicId) {
     return `MATCH (t:Topic)
@@ -150,22 +150,19 @@ const queryBuilder = {
 const transformer = {
   user : extractFirstResult,
 
-  opinion : extractFirstResult,
+  opinion : neoData => extractFirstData(neoData, extractUserOpinion),
 
-  opinionsByIds : extractFirstResults,
+  opinionsByIds : neoData => extractAllData(neoData, extractUserOpinion),
 
-  opinionsByTopic : extractFirstResults,
+  opinionsByTopic : neoData => extractAllData(neoData, extractUserOpinion),
 
   topic : extractFirstResult,
 
   topics : extractFirstResults,
 
-  neighbors : function(neoData) {
-    // destructuring: node needs to run with --harmony_destructuring flag
-    const [{data}] = neoData.results;
-
-    return data.map(datum => {
-      const [, rel, friend] = datum.row;
+  neighbors2 : neoData => {
+    return extractAllData(neoData, row => {
+      const [, rel, friend] = row;
 
       return {
         rel,
@@ -174,23 +171,21 @@ const transformer = {
     });
   },
 
-  nearest : function(neoData) {
-    const
-      [{data}] = neoData.results,
-      scoredPaths = data.map(datum => {
-        const
-          [friend, path, opiner, opinion] = datum.row,
-          score = scorePath(path);
+  nearest: neoData => {
+    const scoredPaths = extractAllData(neoData, row => {
+      const
+        [friend, path, opiner, opinion] = row,
+        score = scorePath(path);
 
-        return {
-          friend,
-          path,
-          opiner,
-          opinion: opinion.id,
-          score,
-          key: friend.id + ':' + opiner.id
-        };
-      });
+      return {
+        friend,
+        path,
+        opiner,
+        opinion: opinion.id,
+        score,
+        key: friend.id + ':' + opiner.id
+      };
+    });
 
     return {
       paths: getUniqueStartFinishCombos(scoredPaths)
@@ -198,33 +193,61 @@ const transformer = {
   }
 };
 
-function combineUserAndNeighbors(user, neighbors) {
-  return {
-    user,
-    neighbors
-  };
+/**
+ * returns a list of mapFn applied to each row of data
+ * mapFn: maps over each data[i].row
+ * defaultResult: returned if there are no results
+data generally comes back in the form:
+
+{
+  results: [
+    {
+      data: [
+        {
+          row: [
+            {
+              id: someId,
+              text: "or whatever fields"
+            }
+          ]
+        }, {
+          row: [
+            {
+              id: 2,
+              text: "or whatever fields"
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
-
-// pulls out the first item in the first fow
-function extractFirstResult(neoData) {
-  if (noResults(neoData)) {
-    return null;
-  }
-
-  const [{data: [{row: [first]}]}] = neoData.results;
-
-  return first;
-}
-
-// pulls out the first item in each row
-function extractFirstResults(neoData) {
+ */
+function extractAllData(neoData, mapFn = (row => row), defaultResult = []) {
   const [{data}] = neoData.results;
 
-  return data.map(datum => {
-    return datum.row[0];
-  });
+  return noResults(neoData) ? defaultResult : data.map(datum => mapFn(datum.row));
 }
 
+/**
+ * returns the result of mapFn applied to the first element of the results
+ */
+function extractFirstData(neoData, mapFn, defaultResult) {
+  return extractAllData(neoData, mapFn, [])[0] || defaultResult;
+}
+
+// pulls out the first item from the first row of results
+function extractFirstResult(neoData) {
+  return extractFirstData(neoData, row => row[0], {});
+}
+
+// pulls out the first item from each row of results
+function extractFirstResults(neoData) {
+  return extractAllData(neoData, row => row[0], []);
+}
+
+// null checks a couple of places in the results data
+// see @extractAllData for the neo4j data structure
 function noResults(neoData) {
   const [result] = neoData.results;
 
@@ -242,6 +265,19 @@ function noResults(neoData) {
   return false;
 }
 
+// Record specific extractions
+function extractUserOpinion(row) {
+  const [opinion, user] = row;
+
+  return Object.assign({}, opinion, { user : user });
+}
+
+function combineUserAndNeighbors(user, neighbors) {
+  return {
+    user,
+    neighbors
+  };
+}
 
 function getUniqueStartFinishCombos(scoredPaths) {
   const map = new Map();
