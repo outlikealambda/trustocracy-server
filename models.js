@@ -1,6 +1,7 @@
 const opinion = {
   id : -1,
-  text: ''
+  text: '',
+  influence: 0
 };
 
 module.exports = {

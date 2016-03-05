@@ -75,7 +75,7 @@ app.get('/api/topic/:topicId/opinion', (req, res) => {
 app.get('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
   const {userId, topicId} = req.params;
 
-  db.getOrCreateOpinion(userId, topicId)
+  db.getOpinionByUserTopic(userId, topicId)
     .then(opinion => res.send(opinion).end());
 });
 
@@ -93,7 +93,9 @@ app.get('/api/topic', (req, res) => {
 
 // just so the catchall doesn't get it and fail
 // if the elm server isn't running
-app.get('/favicon.ico', () => {});
+app.get('/favicon.ico', (req, res) => {
+  res.end();
+});
 
 app.get('/*', function(req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);

@@ -3,8 +3,8 @@
 const
   {join} = require('bluebird'),
   cq = require('./cypher-query'),
-  models = require('./models'),
-  idGenerator = require('./id-generator'),
+  // models = require('./models'),
+  // idGenerator = require('./id-generator'),
   log = require('./logger');
 
 
@@ -43,20 +43,30 @@ function getOpinionsByTopic(topicId) {
     .then(transformer.opinionsByTopic);
 }
 
-function getOrCreateOpinion(userId, topicId) {
-  return cq.query(queryBuilder.getOpinionByUserTopic(userId, topicId))
+function getOpinionByUserTopic(userId, topicId) {
+  return cq.query(queryBuilder.opinionByUserTopic(userId, topicId))
     .then(transformer.opinion)
-    // if it doesn't exist, create it
-    .then(opinion => opinion ? opinion : createOpinion(userId, topicId))
-    // add in any missing fields.  lazy migrations could eventually run here
-    .then(log.promise('post-creation'))
-    .then(opinion => Object.assign({}, models.opinion, opinion));
+    .then(opinion => opinion ? opinion : {} );
 }
 
-function createOpinion(userId, topicId) {
-  return cq.query(queryBuilder.createOpinion(userId, topicId, idGenerator.nextOpinionId()))
-    .then(transformer.opinion);
-}
+// I think we eventually want to do this, but I think it overcomplicates
+// things now; creating a blank opinion whenever a user curiously clicks the
+// compose button?  I'd rather them explicitly hit save/publish
+//
+// function getOrCreateOpinion(userId, topicId) {
+//   return cq.query(queryBuilder.opinionByUserTopic(userId, topicId))
+//     .then(transformer.opinion)
+//     // if it doesn't exist, create it
+//     .then(opinion => opinion ? opinion : createOpinion(userId, topicId))
+//     // add in any missing fields.  lazy migrations could eventually run here
+//     .then(log.promise('post-creation'))
+//     .then(opinion => Object.assign({}, models.opinion, opinion));
+// }
+
+// function createOpinion(userId, topicId) {
+//   return cq.query(queryBuilder.createOpinion(userId, topicId, idGenerator.nextOpinionId()))
+//     .then(transformer.opinion);
+// }
 
 function getNearestOpinions(userId, topicId) {
   log.time('opinions');
@@ -88,9 +98,9 @@ const queryBuilder = {
             RETURN u, type(relationship) as r, friend`;
   },
   nearest: function(userId, topicId) {
-    return `MATCH (p:Person)-[:TRUSTS_EXPLICITLY|:TRUSTS]->(f:Person)-[rs:TRUSTS_EXPLICITLY|:TRUSTS*0..3]->(ff:Person)-[:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
+    return `MATCH (p:Person)-[fr:TRUSTS_EXPLICITLY|:TRUSTS]->(f:Person)-[rs:TRUSTS_EXPLICITLY|:TRUSTS*0..2]->(ff:Person)-[:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
             WHERE p.id=${userId} AND t.id=${topicId}
-            RETURN f, extract(r in rs | type(r)) as extracted, ff, o`;
+            RETURN type(fr), f, extract(r in rs | type(r)) as extracted, ff, o`;
   },
   opinionsByIds: function(ids) {
     const idList = ids.join();
@@ -174,10 +184,11 @@ const transformer = {
   nearest: neoData => {
     const scoredPaths = extractAllData(neoData, row => {
       const
-        [friend, path, opiner, opinion] = row,
+        [friendRelationship, friend, path, opiner, opinion] = row,
         score = scorePath(path);
 
       return {
+        friendRelationship,
         friend,
         path,
         opiner,
@@ -313,7 +324,7 @@ module.exports = {
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,
-  getOrCreateOpinion,
+  getOpinionByUserTopic,
   publishOpinion,
   getTopic,
   getTopics
