@@ -91,6 +91,14 @@ app.get('/api/topic', (req, res) => {
     .then(topics => res.send(topics).end());
 });
 
+app.get('/api/fbUser', (req, res) => {
+  console.log(req.headers);
+  res.json({
+    name: 'ME',
+    id: 5
+  }).end();
+});
+
 // just so the catchall doesn't get it and fail
 // if the elm server isn't running
 app.get('/favicon.ico', (req, res) => {
