@@ -3,8 +3,7 @@
 const
   {join} = require('bluebird'),
   cq = require('./cypher-query'),
-  // models = require('./models'),
-  // idGenerator = require('./id-generator'),
+  idGenerator = require('./id-generator'),
   log = require('./logger');
 
 
@@ -20,12 +19,35 @@ function getUserNeighbors(id) {
   return cq.query(queryBuilder.neighbors(id)).then(transformer.neighbors);
 }
 
-function publishOpinion(userId, topicId, opinion) {
-  // update/build the OPINES relationship with a timestamp
-  return cq.query(queryBuilder.markPublished(userId, topicId))
-    // write the new vals
-    .then(() => cq.queryWithParams(queryBuilder.writeOpinion(opinion.id), opinion))
-    .then(transformer.opinion);
+// 1. un-publish any existing published drafts
+// 2. mark the new draft as published
+//
+// we don't transform the result because we don't use it
+function publishOpinion(userId, topicId, opinionId) {
+  return cq.query(queryBuilder.unpublishOpinion(userId, topicId))
+    .then(cq.query(queryBuilder.publishOpinion(opinionId)));
+}
+
+function saveOpinion(userId, topicId, qualifiedOpinion) {
+  const
+    // split up the qualified opinion for the graphDb
+    opinion = {
+      id : idGenerator.nextOpinionId(),
+      text : qualifiedOpinion.text,
+      influence : 0
+    },
+    qualifications = qualifiedOpinion.qualifications;
+
+  return cq.queryWithParams(queryBuilder.createOpinion(userId, topicId), {opinion, qualifications})
+    .then(() => {
+      // reconstruct the qualified opinion for the api
+      return Object.assign(
+        {},
+        opinion,
+        { qualifications : qualifications},
+        { user : qualifiedOpinion.user }
+      );
+    });
 }
 
 function getOpinionById(opinionId) {
@@ -43,30 +65,13 @@ function getOpinionsByTopic(topicId) {
     .then(transformer.opinionsByTopic);
 }
 
+
+// returns the most recently saved opinion for a user/topic
 function getOpinionByUserTopic(userId, topicId) {
-  return cq.query(queryBuilder.opinionByUserTopic(userId, topicId))
+  return cq.query(queryBuilder.opinionDraftByUserTopic(userId, topicId))
     .then(transformer.opinion)
     .then(opinion => opinion ? opinion : {} );
 }
-
-// I think we eventually want to do this, but I think it overcomplicates
-// things now; creating a blank opinion whenever a user curiously clicks the
-// compose button?  I'd rather them explicitly hit save/publish
-//
-// function getOrCreateOpinion(userId, topicId) {
-//   return cq.query(queryBuilder.opinionByUserTopic(userId, topicId))
-//     .then(transformer.opinion)
-//     // if it doesn't exist, create it
-//     .then(opinion => opinion ? opinion : createOpinion(userId, topicId))
-//     // add in any missing fields.  lazy migrations could eventually run here
-//     .then(log.promise('post-creation'))
-//     .then(opinion => Object.assign({}, models.opinion, opinion));
-// }
-
-// function createOpinion(userId, topicId) {
-//   return cq.query(queryBuilder.createOpinion(userId, topicId, idGenerator.nextOpinionId()))
-//     .then(transformer.opinion);
-// }
 
 function getNearestOpinions(userId, topicId) {
   log.time('opinions');
@@ -89,68 +94,90 @@ function getTopics() {
 }
 
 const queryBuilder = {
+
   user: function(id) {
     return `MATCH (u:Person {id:${id}})
             RETURN u`;
   },
+
   neighbors: function(id) {
     return `MATCH (u:Person {id:${id}})-[relationship]->(friend:Person)
             RETURN u, type(relationship) as r, friend`;
   },
+
   nearest: function(userId, topicId) {
     return `MATCH (p:Person)-[fr:TRUSTS_EXPLICITLY|:TRUSTS]->(f:Person)-[rs:TRUSTS_EXPLICITLY|:TRUSTS*0..2]->(ff:Person)-[:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
             WHERE p.id=${userId} AND t.id=${topicId}
             RETURN type(fr), f, extract(r in rs | type(r)) as extracted, ff, o`;
   },
+
   opinionsByIds: function(ids) {
     const idList = ids.join();
     return `MATCH (p:Person) --> (o:Opinion)
             WHERE o.id IN [${idList}]
-            RETURN o, p`;
+            OPTIONAL MATCH (o) <-- (q:Qualifications)
+            RETURN o, p, q`;
   },
+
+  // published only
   opinionsByTopic: function (topicId) {
-    return `MATCH (p:Person) --> (o:Opinion) --> (t:Topic)
+    return `MATCH (p:Person) -[:OPINES]-> (o:Opinion) --> (t:Topic)
             WHERE t.id = ${topicId}
-            RETURN o, p`;
+            OPTIONAL MATCH (o) <-- (q:Qualifications)
+            RETURN o, p, q`;
 
   },
-  createOpinion: function(userId, topicId, opinionId) {
-    return `MATCH (u:Person), (t:Topic)
-            WHERE u.id=${userId} AND t.id=${topicId}
-            CREATE (o:Opinion { id: ${opinionId} }),
-            (u)-[:THINKS]->(o)-[:ADDRESSES]->(t)
-            RETURN o, u`;
-  },
+
   opinionById: function(opinionId) {
     return `MATCH (p:Person) --> (o:Opinion)
             WHERE o.id = ${opinionId}
-            RETURN o, p`;
+            OPTIONAL MATCH (o) <-[:QUALIFIES]- (q:Qualifications)
+            RETURN o, p, q`;
   },
-  opinionByUserTopic: function(userId, topicId) {
-    return `MATCH (p:Person)-[:THINKS|:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
+
+  opinionDraftByUserTopic: function(userId, topicId) {
+    return `MATCH (p:Person)-[:THINKS]->(o:Opinion)-->(t:Topic)
             WHERE p.id = ${userId} AND t.id = ${topicId}
-            RETURN o, p`;
+            OPTIONAL MATCH (o) <-- (q:Qualifications)
+            RETURN o, p, q
+            ORDER BY o.created DESC
+            LIMIT 1`;
   },
-  markPublished: function(userId, topicId) {
-    return `MATCH (p:Person)-[:THINKS|:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
-            WHERE p.id = ${userId} AND t.id = ${topicId}
-            MERGE (p)-[opines:OPINES]->(o)
-            ON CREATE SET opines.created = timestamp(), opines.updated = timestamp()
-            ON MATCH SET opines.updated = timestamp()
-            RETURN opines`;
+
+  // actual opinion and qualifications are passed as params
+  // via queryWithParams
+  createOpinion: function(userId, topicId) {
+    return `MATCH (p:Person), (t:Topic)
+            WHERE p.id=${userId} AND t.id=${topicId}
+            CREATE
+              (p)-[:THINKS]->(o:Opinion)-[:ADDRESSES]->(t),
+              (q:Qualifications)-[:QUALIFIES]->(o)
+            SET
+              o = { opinion },
+              o.created = timestamp(),
+              q = { qualifications }
+            RETURN o, p, q`;
   },
-  // props are passed in via queryWithParams 2nd arg
-  writeOpinion: function(opinionId) {
-    return `MATCH (p:Person) --> (o:Opinion)
-            WHERE o.id = ${opinionId}
-            SET o = { props }
-            RETURN o, p`;
+
+  publishOpinion: function(opinionId) {
+    return `MATCH (p:Person)-[:THINKS]->(o:Opinion)
+            WHERE o.id=${opinionId}
+            CREATE (p)-[:OPINES]->(o)
+            RETURN o.id`;
   },
+
+  unpublishOpinion: function(userId, topicId) {
+    return `MATCH (p:Person)-[r:OPINES]->(:Opinion)-->(t:Topic)
+            WHERE p.id=${userId} AND t.id=${topicId}
+            DELETE r`;
+  },
+
   topic: function(topicId) {
     return `MATCH (t:Topic)
             WHERE t.id = ${topicId}
             RETURN t`;
   },
+
   topics: function() {
     return `MATCH (t:Topic) RETURN t`;
   }
@@ -278,9 +305,14 @@ function noResults(neoData) {
 
 // Record specific extractions
 function extractUserOpinion(row) {
-  const [opinion, user] = row;
+  const [opinion, user, qualifications] = row;
 
-  return Object.assign({}, opinion, { user : user });
+  return Object.assign(
+    {},
+    opinion,
+    { user : user },
+    { qualifications: qualifications }
+  );
 }
 
 function combineUserAndNeighbors(user, neighbors) {
@@ -324,8 +356,23 @@ module.exports = {
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,
-  getOpinionByUserTopic,
-  publishOpinion,
+  getOpinionByUserTopic, // returns most recently edited opinion
+
+  saveOpinion, // saves, and returns with saved id attached
+
+  // 1. save the opinion as a draft
+  // 2. mark it as published
+  // 3. return that opinion
+  publishOpinion : function (userId, topicId, qualifiedOpinion) {
+    return saveOpinion(userId, topicId, qualifiedOpinion)
+      .then(draft => {
+        log.info('draft');
+        log.info(draft);
+        return publishOpinion(userId, topicId, draft.id)
+          .then(() => draft);
+      });
+  },
+
   getTopic,
   getTopics
 };

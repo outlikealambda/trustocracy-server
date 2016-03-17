@@ -1,9 +1,9 @@
 var
   rp = require('request-promise'),
+  log = require('./logger'),
   options = {
     auth: { username: 'neo4j', password: 'graphdb'}
   };
-  // log = require('./logger');
 
 
 function query(cypherQuery) {
@@ -11,16 +11,23 @@ function query(cypherQuery) {
 }
 
 function queryWithParams(cypherQuery, params) {
-  // log.info(cypherQuery, params);
-  return rp(buildOptions(cypherQuery, params));
+  return rp(buildOptions(cypherQuery, params))
+    .then(result => {
+      log.info(result);
+      return result;
+    });
 }
 
 function buildOptions(cypherQuery, params) {
-  return Object.assign({
+  const newOptions = Object.assign({
     method: 'POST',
     url: getCypherUrl(),
     json: createStatement(cypherQuery, params)
   }, options);
+
+  log.info(newOptions.json.statements[0]);
+
+  return newOptions;
 }
 
 function getCypherUrl() {
@@ -36,9 +43,7 @@ function createStatement(query, params) {
     statements: [
       {
         statement: query,
-        parameters: {
-          props: params
-        }
+        parameters: params
       }
     ]
   };
