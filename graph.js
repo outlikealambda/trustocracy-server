@@ -382,8 +382,6 @@ module.exports = {
   publishOpinion : function (userId, topicId, qualifiedOpinion) {
     return saveOpinion(userId, topicId, qualifiedOpinion)
       .then(draft => {
-        log.info('draft');
-        log.info(draft);
         return publishOpinion(userId, topicId, draft.id)
           .then(() => draft);
       });

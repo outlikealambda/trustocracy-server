@@ -109,8 +109,6 @@ app.post('/api/user/:userId/topic/:topicId/opinion/save', function(req, res) {
     {userId, topicId} = req.params,
     opinion = req.body;
 
-  log.info(opinion);
-
   db.saveOpinion(userId, topicId, opinion)
     .then(saved => res.send(saved).end());
 });
