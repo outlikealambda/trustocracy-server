@@ -1,9 +1,10 @@
 'use strict';
 
-var
+const
   express = require('express'),
   logger = require('morgan'),
   bodyParser = require('body-parser'),
+  crypto = require('crypto'),
 
   idGenerator = require('./id-generator'),
   frontend = require('./frontend'),
@@ -11,7 +12,7 @@ var
   log = require('./logger');
 
 
-var app = express();
+const app = express();
 
 // Configuration
 app.set('port', process.env.PORT || 3714);
@@ -123,12 +124,36 @@ app.get('/api/topic', (req, res) => {
     .then(topics => res.send(topics).end());
 });
 
+// FIXME: how to inject this?
+const { fbSecret } = require(`./config-${app.get('env')}.json`); 
 app.get('/api/fbUser', (req, res) => {
-  console.log(req.headers);
-  res.json({
-    name: 'ME',
-    id: 5
-  }).end();
+
+  const [ encodedSig, payload ] = req.headers.fbsignedrequest.split('.');
+  const sig = Buffer.from(encodedSig, 'base64').toString('hex');
+  const data = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+
+  if (data.algorithm === 'HMAC-SHA256') {
+    const hmac = crypto.createHmac('sha256', fbSecret);
+    hmac.update(payload);
+    const expectedSig = hmac.digest('hex');
+
+    console.log('sig check...')
+    console.log(sig);
+    console.log(expectedSig);
+    if (sig === expectedSig) {
+
+      // TODO:...
+      res.json({
+        name: 'ME',
+        id: 5
+      }).end();
+
+    } else {
+      res.status(401).send('Signatures do not match').end();
+    }
+  } else {
+    res.status(400).send('Unknown algorithm: ' + data.algorithm).end();
+  }
 });
 
 // just so the catchall doesn't get it and fail
