@@ -4,15 +4,18 @@ const
   express = require('express'),
   logger = require('morgan'),
   bodyParser = require('body-parser'),
-  crypto = require('crypto'),
 
   idGenerator = require('./id-generator'),
   frontend = require('./frontend'),
   db = require('./graph'),
   log = require('./logger');
 
+const {
+  fbDecodeAndValidate,
+  fbGetMe } = require('./facebook');
 
 const app = express();
+const { fbSecret } = require(`./config-${app.get('env')}.json`);
 
 // Configuration
 app.set('port', process.env.PORT || 3714);
@@ -124,35 +127,39 @@ app.get('/api/topic', (req, res) => {
     .then(topics => res.send(topics).end());
 });
 
-// FIXME: how to inject this?
-const { fbSecret } = require(`./config-${app.get('env')}.json`); 
 app.get('/api/fbUser', (req, res) => {
 
-  const [ encodedSig, payload ] = req.headers.fbsignedrequest.split('.');
-  const sig = Buffer.from(encodedSig, 'base64').toString('hex');
-  const data = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+  const [ errMsg, data ] =
+    fbDecodeAndValidate(fbSecret, req.headers.fbsignedrequest);
 
-  if (data.algorithm === 'HMAC-SHA256') {
-    const hmac = crypto.createHmac('sha256', fbSecret);
-    hmac.update(payload);
-    const expectedSig = hmac.digest('hex');
-
-    console.log('sig check...')
-    console.log(sig);
-    console.log(expectedSig);
-    if (sig === expectedSig) {
-
-      // TODO:...
-      res.json({
-        name: 'ME',
-        id: 5
-      }).end();
-
-    } else {
-      res.status(401).send('Signatures do not match').end();
-    }
+  if (errMsg) {
+    res.status(401).send(errMsg).end();
   } else {
-    res.status(400).send('Unknown algorithm: ' + data.algorithm).end();
+
+    console.log(data);
+    const fbUserId = data.user_id;
+
+    db.getUserByFacebookId(fbUserId)
+      .then(user => {
+        console.log('Found user:', user);
+        // if user not found, then send request to FB for info...
+        if (!user.name) {
+          const accessToken = req.headers.fbaccesstoken;
+          console.log('Requesting info from fb using token', accessToken, req.headers);
+          fbGetMe(accessToken)
+            .then(JSON.parse)
+            .then(res => {
+              console.log('fb access token res:', res);
+              return db.createUserWithFacebookId(fbUserId, res.name)
+                .then(createdUser => {
+                  console.log('Created user', createdUser);
+                  res.json(createdUser).end()
+                });
+            });
+        } else {
+          res.json(user).end();
+        }
+      });
   }
 });
 

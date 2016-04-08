@@ -15,6 +15,15 @@ function getUser(id) {
   return cq.query(queryBuilder.user(id)).then(transformer.user);
 }
 
+function getUserByFacebookId(fbUserId) {
+  return cq.query(queryBuilder.fbUser(fbUserId)).then(transformer.user);
+}
+
+function createUserWithFacebookId(fbUserId, name) {
+  const query = `CREATE (p:Person {name: '${name}', id: ${idGenerator.nextUserId()}, fbUserId: ${fbUserId}}) RETURN p`;
+  return cq.query(query).then(transformer.user);
+}
+
 function getUserNeighbors(id) {
   return cq.query(queryBuilder.neighbors(id)).then(transformer.neighbors);
 }
@@ -97,6 +106,11 @@ const queryBuilder = {
 
   user: function(id) {
     return `MATCH (u:Person {id:${id}})
+            RETURN u`;
+  },
+
+  fbUser: function(fbUserId) {
+    return `MATCH (u:Person {fbUserId:${fbUserId}})
             RETURN u`;
   },
 
@@ -353,6 +367,8 @@ function scorePath(path) {
 module.exports = {
   getNearestOpinions,
   getUserInfo,
+  getUserByFacebookId,
+  createUserWithFacebookId,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,
