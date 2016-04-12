@@ -1,7 +1,8 @@
 'use strict';
 
 const
-  crypto = require('crypto');
+  crypto = require('crypto'),
+  log = require('./logger');
 
 function decodeAndValidate(secret, signedRequest) {
 
@@ -10,10 +11,11 @@ function decodeAndValidate(secret, signedRequest) {
     sig = Buffer.from(encodedSig, 'base64').toString('hex'),
     data = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
 
+  log.info(data);
+
   if (data.algorithm === 'HMAC-SHA256') {
     const
-      hmac = crypto.createHmac('sha256', secret),
-      expectedSig = hmac.update(payload).digest('hex');
+      expectedSig = generateSignature('sha256', secret, payload);
 
     if (sig === expectedSig) {
       return [ null, data ];
@@ -21,8 +23,15 @@ function decodeAndValidate(secret, signedRequest) {
       return [ 'Signatures do not match', null ];
     }
   } else {
-    return [ `Unknown algorithm: ${data.algorithm}`, null ];
+    return [ 'Unknown algorithm', null ];
   }
+}
+
+function generateSignature(algorithm, secret, payload) {
+  const
+    hmac = crypto.createHmac(algorithm, secret);
+
+  return hmac.update(payload).digest('hex');
 }
 
 module.exports = {

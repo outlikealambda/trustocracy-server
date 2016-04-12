@@ -19,8 +19,19 @@ function getUserByFacebookId(fbUserId) {
   return cq.query(queryBuilder.fbUser(fbUserId)).then(transformer.user);
 }
 
+function getUserByGoogleId(gaUserId) {
+  return cq.query(queryBuilder.gaUser(gaUserId)).then(transformer.user);
+}
+
 function createUserWithFacebookId(fbUserId, name) {
-  const query = `CREATE (p:Person {name: '${name}', id: ${idGenerator.nextUserId()}, fbUserId: ${fbUserId}}) RETURN p`;
+  const query = queryBuilder.createFacebookUser(idGenerator.nextUserId(), fbUserId, name);
+
+  return cq.query(query).then(transformer.user);
+}
+
+function createUserWithGoogleId(gaUserId, name) {
+  const query = queryBuilder.createGoogleUser(idGenerator.nextUserId(), gaUserId, name);
+
   return cq.query(query).then(transformer.user);
 }
 
@@ -114,6 +125,12 @@ const queryBuilder = {
             RETURN u`;
   },
 
+  gaUser: function(gaUserId) {
+    // google id is too long as an int, so convert it to a string
+    return `MATCH (u:Person {gaUserId:'${gaUserId}'})
+            RETURN u`;
+  },
+
   neighbors: function(id) {
     return `MATCH (u:Person {id:${id}})-[relationship]->(friend:Person)
             RETURN u, type(relationship) as r, friend`;
@@ -171,6 +188,15 @@ const queryBuilder = {
               o.created = timestamp(),
               q = { qualifications }
             RETURN o, p, q`;
+  },
+
+  createFacebookUser: function(userId, facebookId, name) {
+    return `CREATE (p:Person {name: '${name}', id: ${userId}, fbUserId: ${facebookId}}) RETURN p`;
+  },
+
+  createGoogleUser: function(userId, googleId, name) {
+    // google id is too long as an int, so convert it to a string
+    return `CREATE (p:Person {name: '${name}', id: ${userId}, gaUserId: '${googleId}'}) RETURN p`;
   },
 
   publishOpinion: function(opinionId) {
@@ -368,7 +394,9 @@ module.exports = {
   getNearestOpinions,
   getUserInfo,
   getUserByFacebookId,
+  getUserByGoogleId,
   createUserWithFacebookId,
+  createUserWithGoogleId,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,

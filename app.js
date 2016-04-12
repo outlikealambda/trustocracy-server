@@ -8,14 +8,13 @@ const
   idGenerator = require('./id-generator'),
   frontend = require('./frontend'),
   db = require('./graph'),
-  log = require('./logger');
-
-const {
-  fbDecodeAndValidate,
-  fbGetMe } = require('./facebook');
+  log = require('./logger'),
+  googleAuth = require('./googleAuth'),
+  {fbDecodeAndValidate, fbGetMe} = require('./facebook');
 
 const app = express();
 const { fbSecret } = require(`./config-${app.get('env')}.json`);
+const gaCerts = require('./google-certs.json');
 
 // Configuration
 app.set('port', process.env.PORT || 3714);
@@ -123,6 +122,25 @@ app.get('/api/topic/:topicId', (req, res) => {
 app.get('/api/topic', (req, res) => {
   db.getTopics()
     .then(topics => res.send(topics).end());
+});
+
+app.get('/api/gaUser', (req, res) => {
+  googleAuth
+    .asyncValidate(req.headers.gasignedrequest, gaCerts, function(err, payload) {
+      if (err) {
+        res.status(401).send(err).end();
+      } else {
+        const googleId = payload.sub;
+
+        db.getUserByGoogleId(googleId)
+          .then(user => {
+            // if no existing user, create one
+            // google ids are too long for neo as ints, so convert to a string
+            return user.name ? user : db.createUserWithGoogleId(googleId, payload.name);
+          })
+          .then(user => res.send(user).end());
+      }
+    });
 });
 
 app.get('/api/fbUser', (req, res) => {
