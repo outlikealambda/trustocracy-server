@@ -32,12 +32,13 @@ app.get('/api/user/:id', function(req, res) {
   res.set({ 'Content-Type': 'application/json' });
 
   db.getUserInfo(req.params.id)
-    .then(userInfo => {
-      res.send(userInfo.user).end();
-    }, error => {
-      log.info(error);
-      res.status(404).end('Unknown user');
-    });
+    .then(
+      userInfo =>
+        res.send(userInfo).end(),
+      error => {
+        log.info(error);
+        res.status(404).end('Unknown user');
+      });
 });
 
 app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
@@ -152,26 +153,25 @@ app.get('/api/fbUser', (req, res) => {
     res.status(401).send(errMsg).end();
   } else {
 
-    console.log(data);
     const fbUserId = data.user_id;
-
-    db.getUserByFacebookId(fbUserId)
+    db.getUserInfoByFacebookId(fbUserId)
       .then(user => {
-        console.log('Found user:', user);
         // if user not found, then send request to FB for info...
         if (!user.name) {
           const accessToken = req.headers.fbaccesstoken;
-          console.log('Requesting info from fb using token', accessToken, req.headers);
           fbGetMe(accessToken)
             .then(JSON.parse)
-            .then(res => {
-              console.log('fb access token res:', res);
-              return db.createUserWithFacebookId(fbUserId, res.name)
-                .then(createdUser => {
-                  console.log('Created user', createdUser);
-                  res.json(createdUser).end()
-                });
-            });
+            .then(fbRes =>
+              db.createUserWithFacebookId(fbUserId, fbRes.name))
+            .then(createdUser =>
+              db.getUserInfo(createdUser.id))
+            .then(
+              userInfo =>
+                res.send(userInfo).end(),
+              error => {
+                log.info(error);
+                res.status(404).end('Unknown user');
+              });
         } else {
           res.json(user).end();
         }

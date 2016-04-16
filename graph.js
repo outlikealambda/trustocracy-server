@@ -15,8 +15,10 @@ function getUser(id) {
   return cq.query(queryBuilder.user(id)).then(transformer.user);
 }
 
-function getUserByFacebookId(fbUserId) {
-  return cq.query(queryBuilder.fbUser(fbUserId)).then(transformer.user);
+function getUserInfoByFacebookId(fbUserId) {
+  return cq.query(queryBuilder.fbUser(fbUserId))
+    .then(transformer.user)
+    .then(user => getUserInfo(user.id));
 }
 
 function getUserByGoogleId(gaUserId) {
@@ -219,7 +221,7 @@ const queryBuilder = {
   },
 
   topics: function() {
-    return `MATCH (t:Topic) RETURN t`;
+    return 'MATCH (t:Topic) RETURN t';
   }
 };
 
@@ -237,13 +239,14 @@ const transformer = {
 
   topics : extractFirstResults,
 
-  neighbors2 : neoData => {
+  neighbors : neoData => {
     return extractAllData(neoData, row => {
-      const [, rel, friend] = row;
+      const [, rel, { name, id }] = row;
 
       return {
-        rel,
-        friend
+        name,
+        id,
+        relationship: rel
       };
     });
   },
@@ -355,10 +358,11 @@ function extractUserOpinion(row) {
   );
 }
 
-function combineUserAndNeighbors(user, neighbors) {
+function combineUserAndNeighbors({name, id}, trustees) {
   return {
-    user,
-    neighbors
+    name,
+    id,
+    trustees
   };
 }
 
@@ -393,8 +397,8 @@ function scorePath(path) {
 module.exports = {
   getNearestOpinions,
   getUserInfo,
-  getUserByFacebookId,
   getUserByGoogleId,
+  getUserInfoByFacebookId,
   createUserWithFacebookId,
   createUserWithGoogleId,
   getOpinionById,
