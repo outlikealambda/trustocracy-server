@@ -15,10 +15,9 @@ function getUser(id) {
   return cq.query(queryBuilder.user(id)).then(transformer.user);
 }
 
-function getUserInfoByFacebookId(fbUserId) {
+function getUserByFacebookId(fbUserId) {
   return cq.query(queryBuilder.fbUser(fbUserId))
-    .then(transformer.user)
-    .then(user => getUserInfo(user.id));
+    .then(transformer.user);
 }
 
 function getUserByGoogleId(gaUserId) {
@@ -398,7 +397,7 @@ module.exports = {
   getNearestOpinions,
   getUserInfo,
   getUserByGoogleId,
-  getUserInfoByFacebookId,
+  getUserByFacebookId,
   createUserWithFacebookId,
   createUserWithGoogleId,
   getOpinionById,

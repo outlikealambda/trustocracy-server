@@ -14,7 +14,6 @@ const
 
 const app = express();
 const { fbSecret } = require(`./config-${app.get('env')}.json`);
-const gaCerts = require('./google-certs.json');
 
 // Configuration
 app.set('port', process.env.PORT || 3714);
@@ -126,22 +125,25 @@ app.get('/api/topic', (req, res) => {
 });
 
 app.get('/api/gaUser', (req, res) => {
-  googleAuth
-    .asyncValidate(req.headers.gasignedrequest, gaCerts, function(err, payload) {
-      if (err) {
-        res.status(401).send(err).end();
-      } else {
-        const googleId = payload.sub;
+  googleAuth.asyncValidate(req.headers.gasignedrequest, (err, payload) => {
+    if (err) {
+      res.status(401).send(err).end();
+      return;
+    }
 
-        db.getUserByGoogleId(googleId)
-          .then(user => {
-            // if no existing user, create one
-            // google ids are too long for neo as ints, so convert to a string
-            return user.name ? user : db.createUserWithGoogleId(googleId, payload.name);
-          })
-          .then(user => res.send(user).end());
-      }
-    });
+    const googleId = payload.sub;
+
+    db.getUserByGoogleId(googleId)
+      .then(user => {
+
+        // if no existing user, create one
+        // google ids are too long for neo as ints, so convert to a string
+        return user.name ? user : db.createUserWithGoogleId(googleId, payload.name);
+      })
+      .then(user => db.getUserInfo(user.id))
+      .then(userInfo => res.send(userInfo).end())
+      .catch(err => res.status(401).end(err));
+  });
 });
 
 app.get('/api/fbUser', (req, res) => {
@@ -151,32 +153,25 @@ app.get('/api/fbUser', (req, res) => {
 
   if (errMsg) {
     res.status(401).send(errMsg).end();
-  } else {
-
-    const fbUserId = data.user_id;
-    db.getUserInfoByFacebookId(fbUserId)
-      .then(user => {
-        // if user not found, then send request to FB for info...
-        if (!user.name) {
-          const accessToken = req.headers.fbaccesstoken;
-          fbGetMe(accessToken)
-            .then(JSON.parse)
-            .then(fbRes =>
-              db.createUserWithFacebookId(fbUserId, fbRes.name))
-            .then(createdUser =>
-              db.getUserInfo(createdUser.id))
-            .then(
-              userInfo =>
-                res.send(userInfo).end(),
-              error => {
-                log.info(error);
-                res.status(404).end('Unknown user');
-              });
-        } else {
-          res.json(user).end();
-        }
-      });
+    return;
   }
+
+  const fbUserId = data.user_id;
+
+  db.getUserByFacebookId(fbUserId)
+    .then(user => {
+      if (user.name) {
+        return user;
+      }
+
+      // if user not found, then send request to FB for info...
+      return fbGetMe(req.headers.fbaccesstoken)
+        .then(JSON.parse)
+        .then(fbMe => db.createUserWithFacebookId(fbUserId, fbMe.name));
+    })
+    .then(user => db.getUserInfo(user.id))
+    .then(userInfo => res.send(userInfo).end())
+    .catch(err => res.status(401).end(err));
 });
 
 // just so the catchall doesn't get it and fail

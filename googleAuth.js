@@ -16,7 +16,7 @@ let
   certificateCache = {};
 
 
-function asyncValidate(token, certs, callback) {
+function asyncValidate(token, callback) {
   getCerts().then(certObj => {
 
     let
