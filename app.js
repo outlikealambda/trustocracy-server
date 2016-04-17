@@ -4,16 +4,21 @@ const
   express = require('express'),
   logger = require('morgan'),
   bodyParser = require('body-parser'),
+  cookieParser = require('cookie-parser'),
 
   idGenerator = require('./id-generator'),
   frontend = require('./frontend'),
   db = require('./graph'),
   log = require('./logger'),
   googleAuth = require('./googleAuth'),
-  {fbDecodeAndValidate, fbGetMe} = require('./facebook');
 
-const app = express();
-const { fbSecret } = require(`./config-${app.get('env')}.json`);
+  // init first for env variables
+  app = express(),
+
+  { fbDecodeAndValidate, fbGetMe } = require('./facebook'),
+  { fbSecret, trustoSecret } = require(`./config-${app.get('env')}.json`),
+  requestValidator = require('./requestValidator')(trustoSecret);
+
 
 // Configuration
 app.set('port', process.env.PORT || 3714);
@@ -24,31 +29,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: false
 }));
+app.use(cookieParser());
 
-// gets
+// OPEN ENDPOINTS (no-validation)
 
-app.get('/api/user/:id', function(req, res) {
-  res.set({ 'Content-Type': 'application/json' });
-
-  db.getUserInfo(req.params.id)
-    .then(
-      userInfo =>
-        res.send(userInfo).end(),
-      error => {
-        log.info(error);
-        res.status(404).end('Unknown user');
-      });
-});
-
-app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
-  const {userId, topicId} = req.params;
-
-  res.set({ 'Content-Type': 'application/json' });
-
-  db.getNearestOpinions(userId, topicId)
-    .then(nearest => res.send(nearest).end());
-});
-
+// returns a single opinion
 app.get('/api/opinion/:opinionId', (req, res) => {
   const {opinionId} = req.params;
 
@@ -58,6 +43,7 @@ app.get('/api/opinion/:opinionId', (req, res) => {
     .then(opinion => res.send(opinion).end());
 });
 
+// takes a list of ids, and returns a list of opinions
 app.get('/api/opinions/:ids', (req, res) => {
   const opinionIds = req.params.ids.split(',');
 
@@ -68,6 +54,7 @@ app.get('/api/opinions/:ids', (req, res) => {
     .then(opinions => res.send(opinions).end());
 });
 
+// returns all opinions for a given :topicId
 app.get('/api/topic/:topicId/opinion', (req, res) => {
   const topicId = req.params.topicId;
 
@@ -75,43 +62,7 @@ app.get('/api/topic/:topicId/opinion', (req, res) => {
     .then(opinions => res.send(opinions).end());
 });
 
-app.get('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
-  const {userId, topicId} = req.params;
-
-  db.getOpinionByUserTopic(userId, topicId)
-    .then(opinion => res.send(opinion).end());
-});
-
-app.post('/api/user/:userId/topic/:topicId/opinion/publish', function(req, res) {
-  const
-    {userId, topicId} = req.params,
-    opinion = req.body;
-
-  db.publishOpinion(userId, topicId, opinion)
-    .then(published => res.send(published).end());
-});
-
-// we can use this endpoint if we at some point want to distinguish between
-// retrieving a published vs draft when retrieving via user + topic.
-// otherwise, for now, the api/user/:userId/topic/:topicId/opinion endpoint
-// retrieves the most recently edited -- either a draft or a published opinion
-// app.get('/api/user/:userId/topic/:topicId/opinion/draft', function(req, res) {
-//   const {userId, topicId} = req.params;
-//
-//   db.getOpinionByUserTopic(userId, topicId)
-//     .then(opinion => res.send(opinion).end());
-//
-// });
-
-app.post('/api/user/:userId/topic/:topicId/opinion/save', function(req, res) {
-  const
-    {userId, topicId} = req.params,
-    opinion = req.body;
-
-  db.saveOpinion(userId, topicId, opinion)
-    .then(saved => res.send(saved).end());
-});
-
+// return basic info for :topicId
 app.get('/api/topic/:topicId', (req, res) => {
   const {topicId} = req.params;
 
@@ -119,11 +70,14 @@ app.get('/api/topic/:topicId', (req, res) => {
     .then(topic => res.send(topic).end());
 });
 
+// return a list of all topics
 app.get('/api/topic', (req, res) => {
   db.getTopics()
     .then(topics => res.send(topics).end());
 });
 
+// login with google authentication
+// requires an idToken attached via headers.gasignedrequest
 app.get('/api/gaUser', (req, res) => {
   googleAuth.asyncValidate(req.headers.gasignedrequest, (err, payload) => {
     if (err) {
@@ -146,8 +100,9 @@ app.get('/api/gaUser', (req, res) => {
   });
 });
 
+// login with google authentication
+// requires an idToken attached via headers.fbsignedrequest
 app.get('/api/fbUser', (req, res) => {
-
   const [ errMsg, data ] =
     fbDecodeAndValidate(fbSecret, req.headers.fbsignedrequest);
 
@@ -174,27 +129,78 @@ app.get('/api/fbUser', (req, res) => {
     .catch(err => res.status(401).end(err));
 });
 
+
 // just so the catchall doesn't get it and fail
 // if the elm server isn't running
 app.get('/favicon.ico', (req, res) => {
   res.end();
 });
 
-app.get('/*', function(req, res) {
-  frontend.proxyGet(req.params['0']).pipe(res);
+// ----------------
+// CLOSED ENDPOINTS
+// ----------------
+// looks like they all start with api/user! rest success?
+app.use('/api/user/*', requestValidator.validate);
+
+// returns userInfo
+// TODO: make sure that :id matches cookie Id
+app.get('/api/user/:id', function(req, res) {
+  res.set({ 'Content-Type': 'application/json' });
+
+  db.getUserInfo(req.params.id)
+    .then(
+      userInfo =>
+        res.send(userInfo).end(),
+      error => {
+        log.info(error);
+        res.status(404).end('Unknown user');
+      });
 });
 
-// posts
-app.post('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
+// returns connected opinions for a user/topic
+// TODO: make sure that :userId matches cookie Id
+app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
+  const {userId, topicId} = req.params;
+
+  res.set({ 'Content-Type': 'application/json' });
+
+  db.getNearestOpinions(userId, topicId)
+    .then(nearest => res.send(nearest).end());
+});
+
+// returns the opinion (if it exists) a :userId has written on :topicId
+// TODO: make sure that :userId matches cookie Id
+app.get('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
+  const {userId, topicId} = req.params;
+
+  db.getOpinionByUserTopic(userId, topicId)
+    .then(opinion => res.send(opinion).end());
+});
+
+// save and publish an opinion for :userId on :topicId
+// TODO: make sure that :userId matches cookie Id
+app.post('/api/user/:userId/topic/:topicId/opinion/publish', function(req, res) {
   const
     {userId, topicId} = req.params,
     opinion = req.body;
 
-  log.info('opinion write params', {userId, topicId, opinion});
-  res.set({ 'Content-Type': 'application/json' });
-
   db.publishOpinion(userId, topicId, opinion)
-    .then(opinion => res.send(opinion).end());
+    .then(published => res.send(published).end());
+});
+
+// save an opinion (but don't publish) for :userId on :topicId
+// TODO: make sure that :userId matches cookie Id
+app.post('/api/user/:userId/topic/:topicId/opinion/save', function(req, res) {
+  const
+    {userId, topicId} = req.params,
+    opinion = req.body;
+
+  db.saveOpinion(userId, topicId, opinion)
+    .then(saved => res.send(saved).end());
+});
+
+app.get('/*', function(req, res) {
+  frontend.proxyGet(req.params['0']).pipe(res);
 });
 
 // Start server
