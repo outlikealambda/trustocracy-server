@@ -1,11 +1,17 @@
 'use strict';
 
 const
-  {join} = require('bluebird'),
+  {join, reject} = require('bluebird'),
   cq = require('./cypher-query'),
   idGenerator = require('./id-generator'),
   log = require('./logger');
 
+
+function validateUser(id, secret) {
+  log.info('validating', id, secret);
+  // TODO: actual validation
+  return getUser(id).then(user => user.name ? user : reject('no user found'));
+}
 
 function getUserInfo(id) {
   return join(getUser(id), getUserNeighbors(id), combineUserAndNeighbors);
@@ -407,6 +413,7 @@ module.exports = {
 
   saveOpinion, // saves, and returns with saved id attached
 
+
   // 1. save the opinion as a draft
   // 2. mark it as published
   // 3. return that opinion
@@ -419,5 +426,7 @@ module.exports = {
   },
 
   getTopic,
-  getTopics
+  getTopics,
+
+  validateUser
 };

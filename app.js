@@ -17,7 +17,7 @@ const
 
   { fbDecodeAndValidate, fbGetMe } = require('./facebook'),
   { fbSecret, trustoSecret } = require(`./config-${app.get('env')}.json`),
-  requestValidator = require('./requestValidator')(trustoSecret);
+  trustoAuth = require('./trustoAuth')(trustoSecret);
 
 
 // Configuration
@@ -31,7 +31,11 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(cookieParser());
 
+
+// ------------------------------
 // OPEN ENDPOINTS (no-validation)
+// ------------------------------
+
 
 // returns a single opinion
 app.get('/api/opinion/:opinionId', (req, res) => {
@@ -76,6 +80,37 @@ app.get('/api/topic', (req, res) => {
     .then(topics => res.send(topics).end());
 });
 
+
+// validates the user against the db
+app.get('/api/login', (req, res) => {
+  // TODO: insert manual validation here
+  const {name, secret} = req.headers;
+
+  db.validateUser(name, secret)
+    .then(user => db.getUserInfo(user.id))
+    .then(userInfo => saveUserAsCookie(res, userInfo).send(userInfo).end())
+    .catch(err => {
+      log.info('err, login', err);
+      res.status(401).send('please log in!').end();
+    });
+
+});
+
+// checks if there is a valid jwt session with a user; returns the user
+app.get('/api/checkUser', (req, res) => {
+  trustoAuth.getUserId(req)
+    .then(id => db.getUserInfo(id))
+    .then(userInfo => res.send(userInfo).end())
+    .catch(err => {
+      log.info('err', err);
+      res.status(401).send('please log in!').end();
+    });
+});
+
+function saveUserAsCookie(res, userInfo) {
+  return res.cookie('trustoToken', trustoAuth.createJwt(userInfo));
+}
+
 // login with google authentication
 // requires an idToken attached via headers.gasignedrequest
 app.get('/api/gaUser', (req, res) => {
@@ -95,7 +130,7 @@ app.get('/api/gaUser', (req, res) => {
         return user.name ? user : db.createUserWithGoogleId(googleId, payload.name);
       })
       .then(user => db.getUserInfo(user.id))
-      .then(userInfo => res.send(userInfo).end())
+      .then(userInfo => saveUserAsCookie(res, userInfo).send(userInfo).end())
       .catch(err => res.status(401).end(err));
   });
 });
@@ -125,7 +160,7 @@ app.get('/api/fbUser', (req, res) => {
         .then(fbMe => db.createUserWithFacebookId(fbUserId, fbMe.name));
     })
     .then(user => db.getUserInfo(user.id))
-    .then(userInfo => res.send(userInfo).end())
+    .then(userInfo => saveUserAsCookie(res, userInfo).send(userInfo).end())
     .catch(err => res.status(401).end(err));
 });
 
@@ -136,11 +171,14 @@ app.get('/favicon.ico', (req, res) => {
   res.end();
 });
 
+
 // ----------------
 // CLOSED ENDPOINTS
 // ----------------
 // looks like they all start with api/user! rest success?
-app.use('/api/user/*', requestValidator.validate);
+
+
+app.use('/api/user/:userId/*', trustoAuth.validateJwt);
 
 // returns userInfo
 // TODO: make sure that :id matches cookie Id
