@@ -263,8 +263,11 @@ const transformer = {
         score = scorePath(path);
 
       return {
-        friendRelationship,
-        friend,
+        friend: Object.assign(
+          {},
+          friend,
+          { relationship: friendRelationship }
+        ),
         path,
         opiner,
         opinion: opinion.id,
@@ -353,12 +356,12 @@ function noResults(neoData) {
 
 // Record specific extractions
 function extractUserOpinion(row) {
-  const [opinion, user, qualifications] = row;
+  const [opinion, opiner, qualifications] = row;
 
   return Object.assign(
     {},
     opinion,
-    { user : user },
+    { opiner : opiner },
     { qualifications: qualifications }
   );
 }
