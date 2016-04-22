@@ -46,6 +46,14 @@ function getUserNeighbors(id) {
   return cq.query(queryBuilder.neighbors(id)).then(transformer.neighbors);
 }
 
+// removes any existing delegate relationships, and adds the new relationship
+// TODO: handle topic specific relationships
+function delegate(userId, delegate) {
+  return cq.query(queryBuilder.removeDelegate(userId, delegate))
+    .then(() => cq.query(queryBuilder.addDelegate(userId, delegate)))
+    .then(() => delegate);
+}
+
 // 1. un-publish any existing published drafts
 // 2. mark the new draft as published
 //
@@ -227,6 +235,18 @@ const queryBuilder = {
 
   topics: function() {
     return 'MATCH (t:Topic) RETURN t';
+  },
+
+  addDelegate: function (userId, delegate) {
+    return `MATCH (u:Person), (d:Person)
+            WHERE u.id = ${userId} AND d.id = ${delegate.id}
+            CREATE (u)-[:${delegate.relationship}]->(d)`;
+  },
+
+  removeDelegate: function (userId, delegate) {
+    return `MATCH (u:Person)-[r]->(d:Person)
+            WHERE u.id = ${userId} AND d.id = ${delegate.id}
+            DELETE r`;
   }
 };
 
@@ -430,6 +450,8 @@ module.exports = {
 
   getTopic,
   getTopics,
+
+  delegate,
 
   validateUser
 };

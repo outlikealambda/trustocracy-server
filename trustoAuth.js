@@ -5,10 +5,10 @@ const
   jwtVerify = jwt.verify,
   jwtSign = jwt.sign;
 
-function validate(trustoJwt, userId, trustoSecret) {
+function validate(trustoJwt, trustoSecret) {
   return extract(trustoJwt, trustoSecret)
     .then(claims => {
-      if (claims.sub === parseInt(userId, 10)) {
+      if (claims.sub) {
         return claims;
       } else {
         log.info('user doesn\'t match jwt!');
@@ -30,8 +30,11 @@ function extract(trustoJwt, trustoSecret) {
 module.exports = function(trustoSecret) {
   return {
     validateJwt : (req, res, next) => {
-      validate(req.cookies.trustoToken, req.params.userId, trustoSecret)
-        .then(() => next())
+      validate(req.cookies.trustoToken, trustoSecret)
+        .then(claims => {
+          req.userId = claims.sub;
+          next();
+        })
         .catch(() => res.status(401).send('please log in').end());
     },
     getUserId : (req) => {

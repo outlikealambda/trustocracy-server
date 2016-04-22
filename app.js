@@ -178,27 +178,27 @@ app.get('/favicon.ico', (req, res) => {
 // looks like they all start with api/user! rest success?
 
 
-app.use('/api/user/:userId/*', trustoAuth.validateJwt);
+app.use('/api/secure/*', trustoAuth.validateJwt);
 
 // returns userInfo
 // TODO: make sure that :id matches cookie Id
-app.get('/api/user/:id', function(req, res) {
-  res.set({ 'Content-Type': 'application/json' });
+app.get('/api/secure/user', function(req, res) {
+  const userId = req.userId;
 
-  db.getUserInfo(req.params.id)
-    .then(
-      userInfo =>
-        res.send(userInfo).end(),
-      error => {
-        log.info(error);
-        res.status(404).end('Unknown user');
-      });
+  db.getUserInfo(userId)
+    .then(userInfo => res.send(userInfo).end())
+    .catch(error => {
+      log.info(error);
+      res.status(404).end('Unknown user');
+    });
 });
 
 // returns connected opinions for a user/topic
 // TODO: make sure that :userId matches cookie Id
-app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
-  const {userId, topicId} = req.params;
+app.get('/api/secure/topic/:topicId/connected', function(req, res) {
+  const
+    topicId = req.params.topicId,
+    userId = req.userId;
 
   res.set({ 'Content-Type': 'application/json' });
 
@@ -208,8 +208,10 @@ app.get('/api/user/:userId/topic/:topicId/opinions', function(req, res) {
 
 // returns the opinion (if it exists) a :userId has written on :topicId
 // TODO: make sure that :userId matches cookie Id
-app.get('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
-  const {userId, topicId} = req.params;
+app.get('/api/secure/topic/:topicId/opinion', function(req, res) {
+  const
+    topicId = req.params.topicId,
+    userId = req.userId;
 
   db.getOpinionByUserTopic(userId, topicId)
     .then(opinion => res.send(opinion).end());
@@ -217,9 +219,10 @@ app.get('/api/user/:userId/topic/:topicId/opinion', function(req, res) {
 
 // save and publish an opinion for :userId on :topicId
 // TODO: make sure that :userId matches cookie Id
-app.post('/api/user/:userId/topic/:topicId/opinion/publish', function(req, res) {
+app.post('/api/secure/topic/:topicId/opinion/publish', function(req, res) {
   const
-    {userId, topicId} = req.params,
+    topicId = req.params.topicId,
+    userId = req.userId,
     opinion = req.body;
 
   db.publishOpinion(userId, topicId, opinion)
@@ -228,13 +231,23 @@ app.post('/api/user/:userId/topic/:topicId/opinion/publish', function(req, res) 
 
 // save an opinion (but don't publish) for :userId on :topicId
 // TODO: make sure that :userId matches cookie Id
-app.post('/api/user/:userId/topic/:topicId/opinion/save', function(req, res) {
+app.post('/api/secure/topic/:topicId/opinion/save', function(req, res) {
   const
-    {userId, topicId} = req.params,
+    topicId = req.params.topicId,
+    userId = req.userId,
     opinion = req.body;
 
   db.saveOpinion(userId, topicId, opinion)
     .then(saved => res.send(saved).end());
+});
+
+app.post('/api/secure/delegate', function(req, res) {
+  const
+    userId = req.userId,
+    delegate = req.body;
+
+  db.delegate(userId, delegate)
+    .then(d => res.send(d).end());
 });
 
 app.get('/*', function(req, res) {
