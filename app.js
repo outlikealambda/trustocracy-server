@@ -108,7 +108,7 @@ app.get('/api/checkUser', (req, res) => {
 });
 
 function saveUserAsCookie(res, userInfo) {
-  return res.cookie('trustoToken', trustoAuth.createJwt(userInfo));
+  return res.cookie('trustoToken', trustoAuth.createJwt(userInfo), { 'maxAge': 1000 * 60 * 60 });
 }
 
 // login with google authentication
