@@ -217,8 +217,7 @@ app.get('/api/secure/topic/:topicId/opinion', function(req, res) {
     .then(opinion => res.send(opinion).end());
 });
 
-// save and publish an opinion for :userId on :topicId
-// TODO: make sure that :userId matches cookie Id
+// save and publish an opinion for :topicId
 app.post('/api/secure/topic/:topicId/opinion/publish', function(req, res) {
   const
     topicId = req.params.topicId,
@@ -229,8 +228,7 @@ app.post('/api/secure/topic/:topicId/opinion/publish', function(req, res) {
     .then(published => res.send(published).end());
 });
 
-// save an opinion (but don't publish) for :userId on :topicId
-// TODO: make sure that :userId matches cookie Id
+// save an opinion (but don't publish) for on :topicId
 app.post('/api/secure/topic/:topicId/opinion/save', function(req, res) {
   const
     topicId = req.params.topicId,
@@ -250,9 +248,20 @@ app.post('/api/secure/delegate', function(req, res) {
     .then(d => res.send(d).end());
 });
 
+app.get('/api/secure/delegate/lookup', (req, res) => {
+  const email = req.query.email;
+
+  return db.getTrusteeByEmail(email)
+    .then(trustee => {
+      trustee ? res.send(trustee).end() : res.status(404).end();
+    });
+
+});
+
 app.get('/*', function(req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);
 });
+
 
 // Start server
 idGenerator.init().then(() => {

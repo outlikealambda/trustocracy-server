@@ -54,6 +54,11 @@ function delegate(userId, delegate) {
     .then(() => delegate);
 }
 
+function getTrusteeByEmail(email) {
+  return cq.query(queryBuilder.userByEmail(email))
+    .then(transformer.trustee);
+}
+
 // 1. un-publish any existing published drafts
 // 2. mark the new draft as published
 //
@@ -132,6 +137,11 @@ const queryBuilder = {
 
   user: function(id) {
     return `MATCH (u:Person {id:${id}})
+            RETURN u`;
+  },
+
+  userByEmail: function (email) {
+    return `MATCH (u:Person {email:'${email}'})
             RETURN u`;
   },
 
@@ -253,6 +263,8 @@ const queryBuilder = {
 
 const transformer = {
   user : extractFirstResult,
+
+  trustee : neoData => extractFirstData(neoData, extractTrustee),
 
   opinion : neoData => extractFirstData(neoData, extractUserOpinion),
 
@@ -386,6 +398,18 @@ function extractUserOpinion(row) {
   );
 }
 
+function extractTrustee(row) {
+  const [user] = row;
+
+  return Object.assign(
+    {},
+    {
+      name: user.name,
+      id: user.id
+    }
+  );
+}
+
 function combineUserAndNeighbors({name, id}, trustees) {
   return {
     name,
@@ -433,6 +457,8 @@ module.exports = {
   getOpinionsByIds,
   getOpinionsByTopic,
   getOpinionByUserTopic, // returns most recently edited opinion
+
+  getTrusteeByEmail,
 
   saveOpinion, // saves, and returns with saved id attached
 
