@@ -2,8 +2,10 @@
 
 const
   jwt = require('jsonwebtoken'),
+  bb = require('bluebird'),
   rp = require('request-promise'),
   _ = require('lodash'),
+  log = require('./logger'),
   certFetchOptions = {
     method: 'GET',
     uri: 'https://www.googleapis.com/oauth2/v1/certs',
@@ -13,32 +15,37 @@ const
 
 let
   certificateExpiry = null,
-  certificateCache = {};
+  certificateCache = {},
+  gaApiKey;
 
 
-function asyncValidate(token, callback) {
+function asyncValidate(idToken, accessToken, callback) {
   getCerts().then(certObj => {
-
     let
       error = null,
       certs = _.values(certObj);
 
+    log.info(idToken);
+
     for (let i = 0; i < certs.length; i++) {
       try {
         let payload = jwt.verify(
-          token,
+          idToken,
           certs[i],
           { algorithms: ['RS256'] }
         );
+
+        log.info(payload);
 
         // found a valid cert
         callback(null, payload);
         return;
 
       } catch (err) {
+        // only relevant if all certs fail, then we'll fall through to the
+        // lower callback
         error = err;
       }
-
     }
 
     // no valid certs found
@@ -46,10 +53,74 @@ function asyncValidate(token, callback) {
   });
 }
 
+function retrieveConnections(accessToken, oldConnections, nextPageToken) {
+  const emailAccessOpts = {
+    method: 'GET',
+    // via stackoverflow, we need the requestMask.  eff google's documentation
+    // http://stackoverflow.com/questions/36466050/why-cant-i-retrieve-emails-addresses-and-phone-numbers-with-google-people-api
+    uri: 'https://people.googleapis.com/v1/people/me/connections',
+    qs: {
+      'requestMask.includeField': 'person.names,person.emailAddresses',
+      key: gaApiKey
+    },
+    headers: {
+      'Authorization': 'Bearer ' + accessToken
+    },
+    json: true
+  };
+
+  if (nextPageToken) {
+    emailAccessOpts.qs.pageToken = nextPageToken;
+  }
+
+  return rp(emailAccessOpts)
+    .then(res => {
+
+      // console.log(res);
+      log.info('response', res.connections.length, res.nextPageToken);
+
+      const
+        newConnections = res.connections.map(connection => Object.assign(
+          {},
+          {
+            names: getNames(connection),
+            emails: getEmails(connection)
+          })
+        ),
+        totalConnections = oldConnections.concat(newConnections);
+
+
+
+      // no more connections, stop
+      if (!res.nextPageToken) {
+        return totalConnections;
+      }
+
+      return retrieveConnections(accessToken, totalConnections, res.nextPageToken);
+
+    })
+    .catch(err => log.info('error', err));
+
+}
+
+
+function getNames(connection) {
+  return (connection.names || [])
+    .map(name => name.displayName)
+    .filter(name => name);
+}
+
+
+function getEmails(connection) {
+  return (connection.emailAddresses || [])
+    .map(email => email.value)
+    .filter(email => email);
+}
+
 
 function getCerts() {
   if (certificateExpiry && Date.now() < certificateExpiry.getTime()) {
-    return certificateCache;
+    return bb.resolve(certificateCache);
   }
 
   return rp(certFetchOptions).then(res => {
@@ -76,6 +147,11 @@ function extractAge(cacheControl) {
 }
 
 
-module.exports = {
-  asyncValidate
+module.exports = function(initGaApiKey) {
+  gaApiKey = initGaApiKey;
+
+  return {
+    asyncValidate,
+    retrieveConnections : accessToken => retrieveConnections(accessToken, [])
+  };
 };

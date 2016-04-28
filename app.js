@@ -10,13 +10,13 @@ const
   frontend = require('./frontend'),
   db = require('./graph'),
   log = require('./logger'),
-  googleAuth = require('./googleAuth'),
 
   // init first for env variables
   app = express(),
 
   { fbDecodeAndValidate, fbGetMe } = require('./facebook'),
-  { fbSecret, trustoSecret } = require(`./config-${app.get('env')}.json`),
+  { fbSecret, trustoSecret, gaApiKey } = require(`./config-${app.get('env')}.json`),
+  googleAuth = require('./googleAuth')(gaApiKey),
   trustoAuth = require('./trustoAuth')(trustoSecret);
 
 
@@ -108,15 +108,19 @@ app.get('/api/checkUser', (req, res) => {
 });
 
 function saveUserAsCookie(res, userInfo) {
+  log.info('user info', userInfo);
   return res.cookie('trustoToken', trustoAuth.createJwt(userInfo), { 'maxAge': 1000 * 60 * 60 });
 }
 
 // login with google authentication
 // requires an idToken attached via headers.gasignedrequest
 app.get('/api/gaUser', (req, res) => {
-  googleAuth.asyncValidate(req.headers.gasignedrequest, (err, payload) => {
+  const {gasignedrequest: idToken, gaaccesstoken: accessToken} = req.headers;
+
+  googleAuth.asyncValidate(idToken, accessToken, (err, payload) => {
     if (err) {
       res.status(401).send(err).end();
+      log.info('failed??');
       return;
     }
 
@@ -124,6 +128,7 @@ app.get('/api/gaUser', (req, res) => {
 
     db.getUserByGoogleId(googleId)
       .then(user => {
+        log.info('user', user);
 
         // if no existing user, create one
         // google ids are too long for neo as ints, so convert to a string
@@ -131,8 +136,25 @@ app.get('/api/gaUser', (req, res) => {
       })
       .then(user => db.getUserInfo(user.id))
       .then(userInfo => saveUserAsCookie(res, userInfo).send(userInfo).end())
-      .catch(err => res.status(401).end(err));
+      .catch(err => {
+        log.info('ga user fail', err);
+
+        res.status(401).end(err);
+      });
+
   });
+});
+
+app.get('/api/gaContacts', (req, res) => {
+  const {gaaccesstoken: accessToken} = req.headers;
+
+  googleAuth.retrieveConnections(accessToken)
+    .then(connections => {
+      log.info('length', connections.length);
+      log.info(connections);
+      log.info('length', connections.length);
+      res.status(401).end('test endpoint!');
+    });
 });
 
 // login with google authentication

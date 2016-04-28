@@ -1,7 +1,7 @@
 'use strict';
 
 const
-  {join, reject} = require('bluebird'),
+  {reject} = require('bluebird'),
   cq = require('./cypher-query'),
   idGenerator = require('./id-generator'),
   log = require('./logger');
@@ -14,7 +14,7 @@ function validateUser(id, secret) {
 }
 
 function getUserInfo(id) {
-  return join(getUser(id), getUserNeighbors(id), combineUserAndNeighbors);
+  return cq.query(queryBuilder.userInfo(id)).then(transformer.userInfo);
 }
 
 function getUser(id) {
@@ -42,10 +42,6 @@ function createUserWithGoogleId(gaUserId, name) {
   return cq.query(query).then(transformer.user);
 }
 
-function getUserNeighbors(id) {
-  return cq.query(queryBuilder.neighbors(id)).then(transformer.neighbors);
-}
-
 // removes any existing delegate relationships, and adds the new relationship
 // TODO: handle topic specific relationships
 function delegate(userId, delegate) {
@@ -59,6 +55,7 @@ function getTrusteeByEmail(email) {
     .then(transformer.trustee);
 }
 
+// (Assumes already created opinion)
 // 1. un-publish any existing published drafts
 // 2. mark the new draft as published
 //
@@ -140,8 +137,19 @@ const queryBuilder = {
             RETURN u`;
   },
 
+  // returns [user, [emails], [neighbors {user, relationship}]]
+  // speed: unknown, possibly unimportant
+  userInfo: function(id) {
+    return `MATCH (u:Person)-[:HAS_EMAIL]->(e:Email)
+            WHERE u.id = ${id}
+            WITH u, collect(e.email) as emails
+            MATCH (u)-[r]->(f:Person)
+            RETURN u as user, emails, collect({friend: f, relationship: type(r)}) as neighbors`;
+  },
+
   userByEmail: function (email) {
-    return `MATCH (u:Person {email:'${email}'})
+    return `MATCH (e:Email)<-[:HAS_EMAIL]-(u:Person)
+            WHERE e.email = '${email}'
             RETURN u`;
   },
 
@@ -154,11 +162,6 @@ const queryBuilder = {
     // google id is too long as an int, so convert it to a string
     return `MATCH (u:Person {gaUserId:'${gaUserId}'})
             RETURN u`;
-  },
-
-  neighbors: function(id) {
-    return `MATCH (u:Person {id:${id}})-[relationship]->(friend:Person)
-            RETURN u, type(relationship) as r, friend`;
   },
 
   nearest: function(userId, topicId) {
@@ -264,7 +267,36 @@ const queryBuilder = {
 const transformer = {
   user : extractFirstResult,
 
-  trustee : neoData => extractFirstData(neoData, extractTrustee),
+  trustee : neoData => extractFirstData(neoData, row => {
+    const [user] = row;
+
+    return Object.assign(
+      {},
+      {
+        name: user.name,
+        id: user.id
+      }
+    );
+  }),
+
+  userInfo : neoData => extractFirstData(neoData, row => {
+    const
+      [user, emails, neighbors] = row,
+      trustees = neighbors.map(neighbor => Object.assign({}, {
+        name: neighbor.friend.name,
+        id: neighbor.friend.id,
+        relationship: neighbor.relationship
+      }));
+
+    return Object.assign({},
+      {
+        name: user.name,
+        id: user.id,
+        trustees: trustees,
+        emails : emails
+      }
+    );
+  }),
 
   opinion : neoData => extractFirstData(neoData, extractUserOpinion),
 
@@ -275,18 +307,6 @@ const transformer = {
   topic : extractFirstResult,
 
   topics : extractFirstResults,
-
-  neighbors : neoData => {
-    return extractAllData(neoData, row => {
-      const [, rel, { name, id }] = row;
-
-      return {
-        name,
-        id,
-        relationship: rel
-      };
-    });
-  },
 
   nearest: neoData => {
     const scoredPaths = extractAllData(neoData, row => {
@@ -398,26 +418,6 @@ function extractUserOpinion(row) {
   );
 }
 
-function extractTrustee(row) {
-  const [user] = row;
-
-  return Object.assign(
-    {},
-    {
-      name: user.name,
-      id: user.id
-    }
-  );
-}
-
-function combineUserAndNeighbors({name, id}, trustees) {
-  return {
-    name,
-    id,
-    trustees
-  };
-}
-
 function getUniqueStartFinishCombos(scoredPaths) {
   const map = new Map();
 
@@ -447,12 +447,12 @@ function scorePath(path) {
 }
 
 module.exports = {
-  getNearestOpinions,
   getUserInfo,
   getUserByGoogleId,
   getUserByFacebookId,
   createUserWithFacebookId,
   createUserWithGoogleId,
+  getNearestOpinions,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,
