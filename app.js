@@ -209,9 +209,9 @@ app.get('/api/secure/gaContacts', (req, res) => {
     userId = req.userId,
     accessToken = req.headers.gaaccesstoken;
 
-  googleAuth.retrieveConnections(accessToken)
-    .then(connections => connections
-        .map(connection => connection.emails)
+  googleAuth.retrieveContacts(accessToken)
+    .then(contacts => contacts
+        .map(contacts => contacts.emails)
         .reduce((accumulator, emails) => accumulator.concat(emails), []))
     .then(log.promise('map-reduced'))
     .then(emails => db.connectUserToEmails(userId, emails))

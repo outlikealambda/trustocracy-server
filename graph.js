@@ -42,7 +42,7 @@ function createUserWithGoogleId(gaUserId, name, email) {
 
   const
     userId = idGenerator.nextUserId(),
-    upgradeContact = queryBuilder.upgradeContactToPerson(userId, name, email),
+    upgradeContact = queryBuilder.upgradeContactToPerson(userId, gaUserId, name, email),
     createUser = queryBuilder.createGoogleUser(userId, gaUserId, name);
 
   log.info('creating/upgrading google user', gaUserId, name, email);
@@ -51,7 +51,7 @@ function createUserWithGoogleId(gaUserId, name, email) {
     .then(transformer.user)
     .then(user => {
       // we successfully upgraded an existing contact; done
-      if (user) {
+      if (user.id) {
         return user;
       }
 
@@ -158,7 +158,9 @@ function getTopics() {
 // given a user and a list of emails, connect the user to any existing
 // contacts or people on that list, and create (and connect) new contacts for
 // any emails not in the graph
-function connectUserToEmails(userId, emails) {
+function connectUserToEmails(userId, emailsWithDups) {
+  const emails = _.uniq(emailsWithDups);
+
   return cq.query(queryBuilder.emailsInGraph(emails))
     .then(transformer.emails)
     .then(log.promise('existing'))
@@ -286,10 +288,10 @@ const queryBuilder = {
     return `CREATE (p:Person {name: '${name}', id: ${userId}, gaUserId: '${googleId}'}) RETURN p`;
   },
 
-  upgradeContactToPerson: function (userId, name, email) {
+  upgradeContactToPerson: function (userId, gaUserId, name, email) {
     return `MATCH (c:Contact)-[${rel.personEmail.hasEmail}]->(e:Email {email:'${email}'})
             REMOVE c:Contact
-            SET c :Person, c.name = '${name}', c.id = ${userId}
+            SET c :Person, c.name = '${name}', c.id = ${userId}, c.gaUserId = '${gaUserId}'
             RETURN c`;
   },
 

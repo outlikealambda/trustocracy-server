@@ -53,7 +53,7 @@ function asyncValidate(idToken, accessToken, callback) {
   });
 }
 
-function retrieveConnections(accessToken, oldConnections, nextPageToken) {
+function retrieveContacts(accessToken, oldContacts, nextPageToken) {
   const emailAccessOpts = {
     method: 'GET',
     // via stackoverflow, we need the requestMask.  eff google's documentation
@@ -80,23 +80,23 @@ function retrieveConnections(accessToken, oldConnections, nextPageToken) {
       log.info('response', res.connections.length, res.nextPageToken);
 
       const
-        newConnections = res.connections.map(connection => Object.assign(
+        newContacts = res.connections.map(contacts => Object.assign(
           {},
           {
-            names: getNames(connection),
-            emails: getEmails(connection)
+            names: getNames(contacts),
+            emails: getEmails(contacts)
           })
         ),
-        totalConnections = oldConnections.concat(newConnections);
+        totalContacts = oldContacts.concat(newContacts);
 
 
 
-      // no more connections, stop
+      // no more contacts, stop
       if (!res.nextPageToken) {
-        return totalConnections;
+        return totalContacts;
       }
 
-      return retrieveConnections(accessToken, totalConnections, res.nextPageToken);
+      return retrieveContacts(accessToken, totalContacts, res.nextPageToken);
 
     })
     .catch(err => log.info('error', err));
@@ -104,15 +104,15 @@ function retrieveConnections(accessToken, oldConnections, nextPageToken) {
 }
 
 
-function getNames(connection) {
-  return (connection.names || [])
+function getNames(contacts) {
+  return (contacts.names || [])
     .map(name => name.displayName)
     .filter(name => name);
 }
 
 
-function getEmails(connection) {
-  return (connection.emailAddresses || [])
+function getEmails(contacts) {
+  return (contacts.emailAddresses || [])
     .map(email => email.value)
     .filter(email => email);
 }
@@ -152,12 +152,16 @@ module.exports = function(initGaApiKey) {
 
   return {
     asyncValidate,
-    retrieveConnections : accessToken => retrieveConnections(accessToken, []),
-    retrieveFakeConnections : () => {
+    retrieveContacts : accessToken => retrieveContacts(accessToken, []),
+    retrieveFakeContacts : () => {
       return bb.resolve([
         {
           names: [],
-          emails: ['will.reppun@gmail.com', 'test@gmail.com']
+          emails: ['will.reppun@gmail.com', 'test@gmail.com', 'a.duplicate@gmail.com']
+        },
+        {
+          names: [],
+          emails: ['a.duplicate@gmail.com']
         },
         {
           names: [],
@@ -171,6 +175,7 @@ module.exports = function(initGaApiKey) {
           names: [],
           emails: ['mirrordeer.python@gmail.com']
         }
+
       ]);
     }
   };
