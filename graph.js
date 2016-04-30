@@ -39,16 +39,31 @@ function createUserWithFacebookId(fbUserId, name) {
 }
 
 function createUserWithGoogleId(gaUserId, name, email) {
-  const query = queryBuilder.createGoogleUser(idGenerator.nextUserId(), gaUserId, name);
 
-  log.info('creating google user', gaUserId, name, email);
+  const
+    userId = idGenerator.nextUserId(),
+    upgradeContact = queryBuilder.upgradeContactToPerson(userId, name, email),
+    createUser = queryBuilder.createGoogleUser(userId, gaUserId, name);
 
-  return cq.query(query)
+  log.info('creating/upgrading google user', gaUserId, name, email);
+
+  return cq.query(upgradeContact)
     .then(transformer.user)
     .then(user => {
-      // after adding the email, pass through the user
-      return cq.query(queryBuilder.addEmailToUser(user.id, email))
-        .then(() => user);
+      // we successfully upgraded an existing contact; done
+      if (user) {
+        return user;
+      }
+
+      // create the user from scratch;
+      return cq.query(createUser)
+        .then(transformer.user)
+        .then(user => {
+
+          // after adding the email, pass through the user
+          return cq.query(queryBuilder.addEmailToUser(user.id, email))
+            .then(() => user);
+        });
     });
 }
 
@@ -269,6 +284,13 @@ const queryBuilder = {
   createGoogleUser: function(userId, googleId, name) {
     // google id is too long as an int, so convert it to a string
     return `CREATE (p:Person {name: '${name}', id: ${userId}, gaUserId: '${googleId}'}) RETURN p`;
+  },
+
+  upgradeContactToPerson: function (userId, name, email) {
+    return `MATCH (c:Contact)-[${rel.personEmail.hasEmail}]->(e:Email {email:'${email}'})
+            REMOVE c:Contact
+            SET c :Person, c.name = '${name}', c.id = ${userId}
+            RETURN c`;
   },
 
   addEmailToUser: function(userId, email) {
