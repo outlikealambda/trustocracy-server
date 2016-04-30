@@ -132,7 +132,7 @@ app.get('/api/gaUser', (req, res) => {
 
         // if no existing user, create one
         // google ids are too long for neo as ints, so convert to a string
-        return user.name ? user : db.createUserWithGoogleId(googleId, payload.name);
+        return user.name ? user : db.createUserWithGoogleId(googleId, payload.name, payload.email);
       })
       .then(user => db.getUserInfo(user.id))
       .then(userInfo => saveUserAsCookie(res, userInfo).send(userInfo).end())
@@ -145,17 +145,6 @@ app.get('/api/gaUser', (req, res) => {
   });
 });
 
-app.get('/api/gaContacts', (req, res) => {
-  const {gaaccesstoken: accessToken} = req.headers;
-
-  googleAuth.retrieveConnections(accessToken)
-    .then(connections => {
-      log.info('length', connections.length);
-      log.info(connections);
-      log.info('length', connections.length);
-      res.status(401).end('test endpoint!');
-    });
-});
 
 // login with google authentication
 // requires an idToken attached via headers.fbsignedrequest
@@ -212,6 +201,25 @@ app.get('/api/secure/user', function(req, res) {
     .catch(error => {
       log.info(error);
       res.status(404).end('Unknown user');
+    });
+});
+
+app.get('/api/secure/gaContacts', (req, res) => {
+  const
+    userId = req.userId,
+    accessToken = req.headers.gaaccesstoken;
+
+  googleAuth.retrieveConnections(accessToken)
+    .then(connections => connections
+        .map(connection => connection.emails)
+        .reduce((accumulator, emails) => accumulator.concat(emails), []))
+    .then(log.promise('map-reduced'))
+    .then(emails => db.connectUserToEmails(userId, emails))
+    .then(() => db.getUserInfo(userId))
+    .then(userInfo => res.send(userInfo).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
     });
 });
 

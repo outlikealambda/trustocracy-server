@@ -25,7 +25,7 @@ function buildOptions(cypherQuery, params) {
     json: createStatement(cypherQuery, params)
   }, options);
 
-  // log.info(newOptions.json.statements[0]);
+  log.info(newOptions.json.statements[0]);
 
   return newOptions;
 }

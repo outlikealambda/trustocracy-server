@@ -9,7 +9,7 @@ const
   log = require('./logger'),
   startingUserId = 0,
   startingTopicId = 0,
-  finalTopicId = 9,
+  finalTopicId = 8,
   USER_COUNT = 3000,
   NODES_PER_OPINION = 300,
   explicitProbability = {
@@ -44,7 +44,9 @@ function createUser(id, createStatements) {
 
   const
     name = generateName(),
-    query = `(:Person {name: '${name}', id: ${id}})`;
+    nameDot = name.replace(' ', '.'),
+    email = nameDot + '@gmail.com',
+    query = `(:Person {name: '${name}', id: ${id}})-[:HAS_EMAIL]->(:Email {email: '${email}'})`;
 
   createStatements.push(query);
 
@@ -204,11 +206,24 @@ function assignOpinions(topicId, finalTopicId) {
 
 function createTopic(topicId) {
   const
-    title = faker.lorem.words(faker.random.number(6) + 3).join(' '),
+    // title = faker.lorem.words(faker.random.number(6) + 3).join(' '),
+    title = topics[topicId],
     query = `CREATE (t:Topic {id:${topicId}, text:"${title}"})`;
 
   return cq.query(query);
 }
+
+const topics = [
+  'Hillary vs. Donald',
+  'The TMT',
+  'Honolulu\'s Rail project',
+  'Visitor Drownings',
+  'The Zika Virus',
+  'The Houseless',
+  'Police Accountability',
+  'Kakaako Development',
+  'Housing Prices'
+];
 
 function createOpinion({userId, opinionId, topicId}) {
   const

@@ -4,7 +4,9 @@ const
   {reject} = require('bluebird'),
   cq = require('./cypher-query'),
   idGenerator = require('./id-generator'),
-  log = require('./logger');
+  log = require('./logger'),
+  rel = require('./relationships'),
+  _ = require('lodash');
 
 
 function validateUser(id, secret) {
@@ -36,10 +38,18 @@ function createUserWithFacebookId(fbUserId, name) {
   return cq.query(query).then(transformer.user);
 }
 
-function createUserWithGoogleId(gaUserId, name) {
+function createUserWithGoogleId(gaUserId, name, email) {
   const query = queryBuilder.createGoogleUser(idGenerator.nextUserId(), gaUserId, name);
 
-  return cq.query(query).then(transformer.user);
+  log.info('creating google user', gaUserId, name, email);
+
+  return cq.query(query)
+    .then(transformer.user)
+    .then(user => {
+      // after adding the email, pass through the user
+      return cq.query(queryBuilder.addEmailToUser(user.id, email))
+        .then(() => user);
+    });
 }
 
 // removes any existing delegate relationships, and adds the new relationship
@@ -130,6 +140,19 @@ function getTopics() {
     .then(transformer.topics);
 }
 
+// given a user and a list of emails, connect the user to any existing
+// contacts or people on that list, and create (and connect) new contacts for
+// any emails not in the graph
+function connectUserToEmails(userId, emails) {
+  return cq.query(queryBuilder.emailsInGraph(emails))
+    .then(transformer.emails)
+    .then(log.promise('existing'))
+    .then(existing => _.difference(emails, existing))
+    .then(log.promise('difference'))
+    .then(newEmails => newEmails.length ? cq.query(queryBuilder.addEmailsToGraph(newEmails)) : null)
+    .then(() => cq.query(queryBuilder.knowAllUnconnectedEmails(userId, emails)));
+}
+
 const queryBuilder = {
 
   user: function(id) {
@@ -137,20 +160,41 @@ const queryBuilder = {
             RETURN u`;
   },
 
-  // returns [user, [emails], [neighbors {user, relationship}]]
+  // returns [ user, [emails], [neighbors: {user, relationship}] ]
   // speed: unknown, possibly unimportant
   userInfo: function(id) {
-    return `MATCH (u:Person)-[:HAS_EMAIL]->(e:Email)
+    return `MATCH (u:Person)-[${rel.personEmail.hasEmail}]->(e:Email)
             WHERE u.id = ${id}
             WITH u, collect(e.email) as emails
-            MATCH (u)-[r]->(f:Person)
+            OPTIONAL MATCH (u)-[r]->(f:Person)
             RETURN u as user, emails, collect({friend: f, relationship: type(r)}) as neighbors`;
   },
 
   userByEmail: function (email) {
-    return `MATCH (e:Email)<-[:HAS_EMAIL]-(u:Person)
+    return `MATCH (e:Email)<-[${rel.personEmail.hasEmail}]-(u:Person)
             WHERE e.email = '${email}'
             RETURN u`;
+  },
+
+  emailsInGraph: function(emails) {
+    return `MATCH (e:Email)<-[${rel.personEmail.hasEmail}]-(n)
+            WHERE e.email IN [${wrapEmailsInQuotes(emails).join(', ')}]
+            RETURN e`;
+  },
+
+  addEmailsToGraph: function(emails) {
+    return 'CREATE ' +
+      emails
+        .map(email => `(:Contact)-[${rel.personEmail.hasEmail}]->(:Email{email:'${email}'})`)
+        .join(', ');
+  },
+
+  // adds a :KNOWS relationship to all people (users/contacts) who aren't
+  // already related to userId
+  knowAllUnconnectedEmails: function(userId, emails) {
+    return `MATCH (u:Person), (e:Email)<-[${rel.personEmail.hasEmail}]-(n)
+            WHERE e.email IN [${wrapEmailsInQuotes(emails).join(', ')}] AND u.id = ${userId} AND NOT (u)-->(n)
+            CREATE (u)-[${rel.personPerson.knows}]->(n)`;
   },
 
   fbUser: function(fbUserId) {
@@ -165,7 +209,7 @@ const queryBuilder = {
   },
 
   nearest: function(userId, topicId) {
-    return `MATCH (p:Person)-[fr:TRUSTS_EXPLICITLY|:TRUSTS]->(f:Person)-[rs:TRUSTS_EXPLICITLY|:TRUSTS*0..2]->(ff:Person)-[:OPINES]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
+    return `MATCH (p:Person)-[fr${rel.personPerson.follows}]->(f:Person)-[rs${rel.personPerson.follows}*0..2]->(ff:Person)-[${rel.personOpinion.opines}]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
             WHERE p.id=${userId} AND t.id=${topicId}
             RETURN type(fr), f, extract(r in rs | type(r)) as extracted, ff, o`;
   },
@@ -180,7 +224,7 @@ const queryBuilder = {
 
   // published only
   opinionsByTopic: function (topicId) {
-    return `MATCH (p:Person) -[:OPINES]-> (o:Opinion) --> (t:Topic)
+    return `MATCH (p:Person) -[${rel.personOpinion.opines}]-> (o:Opinion) --> (t:Topic)
             WHERE t.id = ${topicId}
             OPTIONAL MATCH (o) <-- (q:Qualifications)
             RETURN o, p, q`;
@@ -195,7 +239,7 @@ const queryBuilder = {
   },
 
   opinionDraftByUserTopic: function(userId, topicId) {
-    return `MATCH (p:Person)-[:THINKS]->(o:Opinion)-->(t:Topic)
+    return `MATCH (p:Person)-[${rel.personOpinion.thinks}]->(o:Opinion)-->(t:Topic)
             WHERE p.id = ${userId} AND t.id = ${topicId}
             OPTIONAL MATCH (o) <-- (q:Qualifications)
             RETURN o, p, q
@@ -209,7 +253,7 @@ const queryBuilder = {
     return `MATCH (p:Person), (t:Topic)
             WHERE p.id=${userId} AND t.id=${topicId}
             CREATE
-              (p)-[:THINKS]->(o:Opinion)-[:ADDRESSES]->(t),
+              (p)-[${rel.personOpinion.thinks}]->(o:Opinion)-[${rel.opinionTopic.addresses}]->(t),
               (q:Qualifications)-[:QUALIFIES]->(o)
             SET
               o = { opinion },
@@ -227,15 +271,21 @@ const queryBuilder = {
     return `CREATE (p:Person {name: '${name}', id: ${userId}, gaUserId: '${googleId}'}) RETURN p`;
   },
 
+  addEmailToUser: function(userId, email) {
+    return `MATCH (u:Person)
+            WHERE u.id = ${userId}
+            CREATE (u)-[${rel.personEmail.hasEmail}]->(e:Email {email:'${email}'})`;
+  },
+
   publishOpinion: function(opinionId) {
-    return `MATCH (p:Person)-[:THINKS]->(o:Opinion)
+    return `MATCH (p:Person)-[${rel.personOpinion.thinks}]->(o:Opinion)
             WHERE o.id=${opinionId}
-            CREATE (p)-[:OPINES]->(o)
+            CREATE (p)-[${rel.personOpinion.opines}]->(o)
             RETURN o.id`;
   },
 
   unpublishOpinion: function(userId, topicId) {
-    return `MATCH (p:Person)-[r:OPINES]->(:Opinion)-->(t:Topic)
+    return `MATCH (p:Person)-[r:${rel.personOpinion.opines}]->(:Opinion)-->(t:Topic)
             WHERE p.id=${userId} AND t.id=${topicId}
             DELETE r`;
   },
@@ -263,6 +313,9 @@ const queryBuilder = {
   }
 };
 
+function wrapEmailsInQuotes(emails) {
+  return emails.map(email => `'${email}'`);
+}
 
 const transformer = {
   user : extractFirstResult,
@@ -280,13 +333,20 @@ const transformer = {
   }),
 
   userInfo : neoData => extractFirstData(neoData, row => {
+    log.info(row);
+
     const
       [user, emails, neighbors] = row,
-      trustees = neighbors.map(neighbor => Object.assign({}, {
-        name: neighbor.friend.name,
-        id: neighbor.friend.id,
-        relationship: neighbor.relationship
-      }));
+      trustees =
+        neighbors
+          // if we have no friends, OPTIONAL MATCH returns an empty neighbor
+          // so filter those out here
+          .filter(neighbor => neighbor.friend)
+          .map(neighbor => Object.assign({}, {
+            name: neighbor.friend.name,
+            id: neighbor.friend.id,
+            relationship: neighbor.relationship
+          }));
 
     return Object.assign({},
       {
@@ -297,6 +357,8 @@ const transformer = {
       }
     );
   }),
+
+  emails : neoData => extractAllData(neoData, row => row[0].email),
 
   opinion : neoData => extractFirstData(neoData, extractUserOpinion),
 
@@ -479,5 +541,7 @@ module.exports = {
 
   delegate,
 
-  validateUser
+  validateUser,
+
+  connectUserToEmails
 };

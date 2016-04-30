@@ -152,6 +152,26 @@ module.exports = function(initGaApiKey) {
 
   return {
     asyncValidate,
-    retrieveConnections : accessToken => retrieveConnections(accessToken, [])
+    retrieveConnections : accessToken => retrieveConnections(accessToken, []),
+    retrieveFakeConnections : () => {
+      return bb.resolve([
+        {
+          names: [],
+          emails: ['will.reppun@gmail.com', 'test@gmail.com']
+        },
+        {
+          names: [],
+          emails: ['shadechill.gargoyle@gmail.com']
+        },
+        {
+          names: [],
+          emails: ['magentahide.giver@gmail.com']
+        },
+        {
+          names: [],
+          emails: ['mirrordeer.python@gmail.com']
+        }
+      ]);
+    }
   };
 };
