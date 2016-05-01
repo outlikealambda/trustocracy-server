@@ -177,13 +177,10 @@ const transformer = {
   trustee : neoData => extractFirstData(neoData, row => {
     const [user] = row;
 
-    return Object.assign(
-      {},
-      {
-        name: user.name,
-        id: user.id
-      }
-    );
+    return {
+      name: user.name,
+      id: user.id
+    };
   }),
 
   userInfo : neoData => extractFirstData(neoData, row => {
@@ -196,20 +193,20 @@ const transformer = {
           // if we have no friends, OPTIONAL MATCH returns an empty neighbor
           // so filter those out here
           .filter(neighbor => neighbor.friend)
-          .map(neighbor => Object.assign({}, {
-            name: neighbor.friend.name,
-            id: neighbor.friend.id,
-            relationship: neighbor.relationship
-          }));
+          .map(neighbor => {
+            return {
+              name: neighbor.friend.name,
+              id: neighbor.friend.id,
+              relationship: neighbor.relationship
+            };
+          });
 
-    return Object.assign({},
-      {
-        name: user.name,
-        id: user.id,
-        trustees: trustees,
-        emails : emails
-      }
-    );
+    return {
+      name: user.name,
+      id: user.id,
+      trustees: trustees,
+      emails : emails
+    };
   }),
 
   emails : neoData => extractAllData(neoData, row => row[0].email),
