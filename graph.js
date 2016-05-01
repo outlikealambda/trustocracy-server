@@ -3,9 +3,9 @@
 const
   {reject} = require('bluebird'),
   cq = require('./cypher-query'),
+  qb = require('./query-builder'),
   idGenerator = require('./id-generator'),
   log = require('./logger'),
-  rel = require('./relationships'),
   _ = require('lodash');
 
 
@@ -16,24 +16,24 @@ function validateUser(id, secret) {
 }
 
 function getUserInfo(id) {
-  return cq.query(queryBuilder.userInfo(id)).then(transformer.userInfo);
+  return cq.query(qb.userInfo(id)).then(transformer.userInfo);
 }
 
 function getUser(id) {
-  return cq.query(queryBuilder.user(id)).then(transformer.user);
+  return cq.query(qb.user(id)).then(transformer.user);
 }
 
 function getUserByFacebookId(fbUserId) {
-  return cq.query(queryBuilder.fbUser(fbUserId))
+  return cq.query(qb.fbUser(fbUserId))
     .then(transformer.user);
 }
 
 function getUserByGoogleId(gaUserId) {
-  return cq.query(queryBuilder.gaUser(gaUserId)).then(transformer.user);
+  return cq.query(qb.gaUser(gaUserId)).then(transformer.user);
 }
 
 function createUserWithFacebookId(fbUserId, name) {
-  const query = queryBuilder.createFacebookUser(idGenerator.nextUserId(), fbUserId, name);
+  const query = qb.createFacebookUser(idGenerator.nextUserId(), fbUserId, name);
 
   return cq.query(query).then(transformer.user);
 }
@@ -42,8 +42,8 @@ function createUserWithGoogleId(gaUserId, name, email) {
 
   const
     userId = idGenerator.nextUserId(),
-    upgradeContact = queryBuilder.upgradeContactToPerson(userId, gaUserId, name, email),
-    createUser = queryBuilder.createGoogleUser(userId, gaUserId, name);
+    upgradeContact = qb.upgradeContactToPerson(userId, gaUserId, name, email),
+    createUser = qb.createGoogleUser(userId, gaUserId, name);
 
   log.info('creating/upgrading google user', gaUserId, name, email);
 
@@ -61,7 +61,7 @@ function createUserWithGoogleId(gaUserId, name, email) {
         .then(user => {
 
           // after adding the email, pass through the user
-          return cq.query(queryBuilder.addEmailToUser(user.id, email))
+          return cq.query(qb.addEmailToUser(user.id, email))
             .then(() => user);
         });
     });
@@ -70,13 +70,13 @@ function createUserWithGoogleId(gaUserId, name, email) {
 // removes any existing delegate relationships, and adds the new relationship
 // TODO: handle topic specific relationships
 function delegate(userId, delegate) {
-  return cq.query(queryBuilder.removeDelegate(userId, delegate))
-    .then(() => cq.query(queryBuilder.addDelegate(userId, delegate)))
+  return cq.query(qb.removeDelegate(userId, delegate))
+    .then(() => cq.query(qb.addDelegate(userId, delegate)))
     .then(() => delegate);
 }
 
 function getTrusteeByEmail(email) {
-  return cq.query(queryBuilder.userByEmail(email))
+  return cq.query(qb.userByEmail(email))
     .then(transformer.trustee);
 }
 
@@ -86,8 +86,8 @@ function getTrusteeByEmail(email) {
 //
 // we don't transform the result because we don't use it
 function publishOpinion(userId, topicId, opinionId) {
-  return cq.query(queryBuilder.unpublishOpinion(userId, topicId))
-    .then(cq.query(queryBuilder.publishOpinion(opinionId)));
+  return cq.query(qb.unpublishOpinion(userId, topicId))
+    .then(cq.query(qb.publishOpinion(opinionId)));
 }
 
 function saveOpinion(userId, topicId, qualifiedOpinion) {
@@ -100,7 +100,7 @@ function saveOpinion(userId, topicId, qualifiedOpinion) {
     },
     qualifications = qualifiedOpinion.qualifications;
 
-  return cq.queryWithParams(queryBuilder.createOpinion(userId, topicId), {opinion, qualifications})
+  return cq.queryWithParams(qb.createOpinion(userId, topicId), {opinion, qualifications})
     .then(() => {
       // reconstruct the qualified opinion for the api
       return Object.assign(
@@ -113,31 +113,31 @@ function saveOpinion(userId, topicId, qualifiedOpinion) {
 }
 
 function getOpinionById(opinionId) {
-  return cq.query(queryBuilder.opinionById(opinionId))
+  return cq.query(qb.opinionById(opinionId))
     .then(transformer.opinion);
 }
 
 function getOpinionsByIds(ids) {
-  return cq.query(queryBuilder.opinionsByIds(ids))
+  return cq.query(qb.opinionsByIds(ids))
     .then(transformer.opinionsByIds);
 }
 
 function getOpinionsByTopic(topicId) {
-  return cq.query(queryBuilder.opinionsByTopic(topicId))
+  return cq.query(qb.opinionsByTopic(topicId))
     .then(transformer.opinionsByTopic);
 }
 
 
 // returns the most recently saved opinion for a user/topic
 function getOpinionByUserTopic(userId, topicId) {
-  return cq.query(queryBuilder.opinionDraftByUserTopic(userId, topicId))
+  return cq.query(qb.opinionDraftByUserTopic(userId, topicId))
     .then(transformer.opinion)
     .then(opinion => opinion ? opinion : {} );
 }
 
 function getNearestOpinions(userId, topicId) {
   log.time('opinions');
-  return cq.query(queryBuilder.nearest(userId, topicId))
+  return cq.query(qb.nearest(userId, topicId))
     .then(neoData => {
       log.timeEnd('opinions');
       return neoData;
@@ -146,12 +146,12 @@ function getNearestOpinions(userId, topicId) {
 }
 
 function getTopic(id) {
-  return cq.query(queryBuilder.topic(id))
+  return cq.query(qb.topic(id))
     .then(transformer.topic);
 }
 
 function getTopics() {
-  return cq.query(queryBuilder.topics())
+  return cq.query(qb.topics())
     .then(transformer.topics);
 }
 
@@ -161,185 +161,15 @@ function getTopics() {
 function connectUserToEmails(userId, emailsWithDups) {
   const emails = _.uniq(emailsWithDups);
 
-  return cq.query(queryBuilder.emailsInGraph(emails))
+  return cq.query(qb.emailsInGraph(emails))
     .then(transformer.emails)
     .then(log.promise('existing'))
     .then(existing => _.difference(emails, existing))
     .then(log.promise('difference'))
-    .then(newEmails => newEmails.length ? cq.query(queryBuilder.addEmailsToGraph(newEmails)) : null)
-    .then(() => cq.query(queryBuilder.knowAllUnconnectedEmails(userId, emails)));
+    .then(newEmails => newEmails.length ? cq.query(qb.addEmailsToGraph(newEmails)) : null)
+    .then(() => cq.query(qb.knowAllUnconnectedEmails(userId, emails)));
 }
 
-const queryBuilder = {
-
-  user: id => {
-    return `MATCH (u:Person {id:${id}})
-            RETURN u`;
-  },
-
-  // returns [ user, [emails], [neighbors: {user, relationship}] ]
-  // speed: unknown, possibly unimportant
-  userInfo: id => {
-    return `MATCH (u:Person)-[${rel.personEmail.hasEmail}]->(e:Email)
-            WHERE u.id = ${id}
-            WITH u, collect(e.email) as emails
-            OPTIONAL MATCH (u)-[r]->(f:Person)
-            RETURN u as user, emails, collect({friend: f, relationship: type(r)}) as neighbors`;
-  },
-
-  userByEmail: email => {
-    return `MATCH (e:Email)<-[${rel.personEmail.hasEmail}]-(u:Person)
-            WHERE e.email = '${email}'
-            RETURN u`;
-  },
-
-  emailsInGraph: emails => {
-    return `MATCH (e:Email)<-[${rel.personEmail.hasEmail}]-(n)
-            WHERE e.email IN [${wrapEmailsInQuotes(emails).join(', ')}]
-            RETURN e`;
-  },
-
-  addEmailsToGraph: emails => {
-    return 'CREATE ' +
-      emails
-        .map(email => `(:Contact)-[${rel.personEmail.hasEmail}]->(:Email{email:'${email}'})`)
-        .join(', ');
-  },
-
-  // adds a :KNOWS relationship to all people (users/contacts) who aren't
-  // already related to userId
-  knowAllUnconnectedEmails: (userId, emails) => {
-    return `MATCH (u:Person), (e:Email)<-[${rel.personEmail.hasEmail}]-(n)
-            WHERE e.email IN [${wrapEmailsInQuotes(emails).join(', ')}] AND u.id = ${userId} AND NOT (u)-->(n)
-            CREATE (u)-[${rel.personPerson.knows}]->(n)`;
-  },
-
-  fbUser: fbUserId => {
-    return `MATCH (u:Person {fbUserId:${fbUserId}})
-            RETURN u`;
-  },
-
-  gaUser: gaUserId => {
-    // google id is too long as an int, so convert it to a string
-    return `MATCH (u:Person {gaUserId:'${gaUserId}'})
-            RETURN u`;
-  },
-
-  nearest: (userId, topicId) => {
-    return `MATCH (p:Person)-[fr${rel.personPerson.follows}]->(f:Person)-[rs${rel.personPerson.follows}*0..2]->(ff:Person)-[${rel.personOpinion.opines}]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
-            WHERE p.id=${userId} AND t.id=${topicId}
-            RETURN type(fr), f, extract(r in rs | type(r)) as extracted, ff, o`;
-  },
-
-  opinionsByIds: ids => {
-    const idList = ids.join();
-    return `MATCH (p:Person) --> (o:Opinion)
-            WHERE o.id IN [${idList}]
-            OPTIONAL MATCH (o) <-- (q:Qualifications)
-            RETURN o, p, q`;
-  },
-
-  // published only
-  opinionsByTopic: topicId => {
-    return `MATCH (p:Person) -[${rel.personOpinion.opines}]-> (o:Opinion) --> (t:Topic)
-            WHERE t.id = ${topicId}
-            OPTIONAL MATCH (o) <-- (q:Qualifications)
-            RETURN o, p, q`;
-
-  },
-
-  opinionById: opinionId => {
-    return `MATCH (p:Person) --> (o:Opinion)
-            WHERE o.id = ${opinionId}
-            OPTIONAL MATCH (o) <-[:QUALIFIES]- (q:Qualifications)
-            RETURN o, p, q`;
-  },
-
-  opinionDraftByUserTopic: (userId, topicId) => {
-    return `MATCH (p:Person)-[${rel.personOpinion.thinks}]->(o:Opinion)-->(t:Topic)
-            WHERE p.id = ${userId} AND t.id = ${topicId}
-            OPTIONAL MATCH (o) <-- (q:Qualifications)
-            RETURN o, p, q
-            ORDER BY o.created DESC
-            LIMIT 1`;
-  },
-
-  // actual opinion and qualifications are passed as params
-  // via queryWithParams
-  createOpinion: (userId, topicId) => {
-    return `MATCH (p:Person), (t:Topic)
-            WHERE p.id=${userId} AND t.id=${topicId}
-            CREATE
-              (p)-[${rel.personOpinion.thinks}]->(o:Opinion)-[${rel.opinionTopic.addresses}]->(t),
-              (q:Qualifications)-[:QUALIFIES]->(o)
-            SET
-              o = { opinion },
-              o.created = timestamp(),
-              q = { qualifications }
-            RETURN o, p, q`;
-  },
-
-  createFacebookUser: (userId, facebookId, name) => {
-    return `CREATE (p:Person {name: '${name}', id: ${userId}, fbUserId: ${facebookId}}) RETURN p`;
-  },
-
-  createGoogleUser: (userId, googleId, name) => {
-    // google id is too long as an int, so convert it to a string
-    return `CREATE (p:Person {name: '${name}', id: ${userId}, gaUserId: '${googleId}'}) RETURN p`;
-  },
-
-  upgradeContactToPerson: (userId, gaUserId, name, email) => {
-    return `MATCH (c:Contact)-[${rel.personEmail.hasEmail}]->(e:Email {email:'${email}'})
-            REMOVE c:Contact
-            SET c :Person, c.name = '${name}', c.id = ${userId}, c.gaUserId = '${gaUserId}'
-            RETURN c`;
-  },
-
-  addEmailToUser: (userId, email) => {
-    return `MATCH (u:Person)
-            WHERE u.id = ${userId}
-            CREATE (u)-[${rel.personEmail.hasEmail}]->(e:Email {email:'${email}'})`;
-  },
-
-  publishOpinion: opinionId => {
-    return `MATCH (p:Person)-[${rel.personOpinion.thinks}]->(o:Opinion)
-            WHERE o.id=${opinionId}
-            CREATE (p)-[${rel.personOpinion.opines}]->(o)
-            RETURN o.id`;
-  },
-
-  unpublishOpinion: (userId, topicId) => {
-    return `MATCH (p:Person)-[r:${rel.personOpinion.opines}]->(:Opinion)-->(t:Topic)
-            WHERE p.id=${userId} AND t.id=${topicId}
-            DELETE r`;
-  },
-
-  topic: (topicId) => {
-    return `MATCH (t:Topic)
-            WHERE t.id = ${topicId}
-            RETURN t`;
-  },
-
-  topics: () => {
-    return 'MATCH (t:Topic) RETURN t';
-  },
-
-  addDelegate: (userId, delegate) => {
-    return `MATCH (u:Person), (d:Person)
-            WHERE u.id = ${userId} AND d.id = ${delegate.id}
-            CREATE (u)-[:${delegate.relationship}]->(d)`;
-  },
-
-  removeDelegate: (userId, delegate) => {
-    return `MATCH (u:Person)-[r]->(d:Person)
-            WHERE u.id = ${userId} AND d.id = ${delegate.id}
-            DELETE r`;
-  }
-};
-
-function wrapEmailsInQuotes(emails) {
-  return emails.map(email => `'${email}'`);
-}
 
 const transformer = {
   user : extractFirstResult,
