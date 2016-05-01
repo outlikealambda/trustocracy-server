@@ -5,32 +5,20 @@ const
   jwtVerify = jwt.verify,
   jwtSign = jwt.sign;
 
-function validate(trustoJwt, trustoSecret) {
-  return extract(trustoJwt, trustoSecret)
-    .then(claims => {
-      if (claims.sub) {
-        return claims;
-      } else {
-        log.info('user doesn\'t match jwt!');
-        return bb.reject('user doesn\'t match jwt!');
-      }
-    });
-}
-
 function extract(trustoJwt, trustoSecret) {
   try {
     const decoded = jwtVerify(trustoJwt, trustoSecret);
     return bb.resolve(decoded);
   } catch (err) {
-    log.info('bad jwt', err);
+    log.info('bad jwt');
     return bb.reject(err);
   }
 }
 
 module.exports = function(trustoSecret) {
   return {
-    validateJwt : (req, res, next) => {
-      validate(req.cookies.trustoToken, trustoSecret)
+    validateMiddleware : (req, res, next) => {
+      extract(req.cookies.trustoToken, trustoSecret)
         .then(claims => {
           req.userId = claims.sub;
           next();
@@ -40,10 +28,6 @@ module.exports = function(trustoSecret) {
     getUserId : (req) => {
       // handle error at endpoint
       return extract(req.cookies.trustoToken, trustoSecret)
-        .then(claims => {
-          log.info('checking user', claims);
-          return claims;
-        })
         .then(claims => claims.sub);
     },
     createJwt: userInfo => {

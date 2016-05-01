@@ -101,8 +101,7 @@ app.get('/api/checkUser', (req, res) => {
   trustoAuth.getUserId(req)
     .then(id => db.getUserInfo(id))
     .then(userInfo => res.send(userInfo).end())
-    .catch(err => {
-      log.info('err', err);
+    .catch(() => {
       res.status(401).send('please log in!').end();
     });
 });
@@ -186,10 +185,9 @@ app.get('/favicon.ico', (req, res) => {
 // ----------------
 // CLOSED ENDPOINTS
 // ----------------
-// looks like they all start with api/user! rest success?
 
 
-app.use('/api/secure/*', trustoAuth.validateJwt);
+app.use('/api/secure/*', trustoAuth.validateMiddleware);
 
 // returns userInfo
 // TODO: make sure that :id matches cookie Id
