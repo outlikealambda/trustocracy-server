@@ -15,9 +15,9 @@ const
   app = express(),
 
   { fbDecodeAndValidate, fbGetMe } = require('./facebook'),
-  { fbSecret, trustoSecret, gaApiKey } = require(`./config-${app.get('env')}.json`),
+  { fbSecret, trustoSecret, gaApiKey, saltOptions } = require(`./config-${app.get('env')}.json`),
   googleAuth = require('./googleAuth')(gaApiKey),
-  trustoAuth = require('./trustoAuth')(trustoSecret);
+  trustoAuth = require('./trustoAuth')(trustoSecret, saltOptions);
 
 
 // Configuration
@@ -83,15 +83,22 @@ app.get('/api/topic', (req, res) => {
 
 // validates the user against the db
 app.get('/api/login', (req, res) => {
-  // TODO: insert manual validation here
-  const {name, secret} = req.headers;
+  const
+    authorization = req.headers.authorization || '',
+    [, basicAuth]= authorization.split('Basic '),
+    [handle, secret] = basicAuth ? Buffer.from(basicAuth, 'base64').toString('ascii').split(':') : ['', ''];
 
-  db.validateUser(name, secret)
+  if (!handle) {
+    res.status(401).send('missing basic auth credentials').end();
+    return;
+  }
+
+  trustoAuth.validateUser(handle, secret)
     .then(user => db.getUserInfo(user.id))
     .then(userInfo => saveUserAsCookie(res, userInfo).send(userInfo).end())
-    .catch(err => {
-      log.info('err, login', err);
-      res.status(401).send('please log in!').end();
+    .catch(() => {
+      log.info('login error!');
+      res.status(401).send('invalid credentials, please try again!').end();
     });
 
 });

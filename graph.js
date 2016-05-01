@@ -9,8 +9,8 @@ const
   _ = require('lodash');
 
 
-function validateUser(id, secret) {
-  log.info('validating', id, secret);
+function validateUser(id, saltedSecret) {
+  log.info('validating', id, saltedSecret);
   // TODO: actual validation
   return getUser(id).then(user => user.name ? user : reject('no user found'));
 }

@@ -175,7 +175,6 @@ module.exports = function(initGaApiKey) {
           names: [],
           emails: ['mirrordeer.python@gmail.com']
         }
-
       ]);
     }
   };

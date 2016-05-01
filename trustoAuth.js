@@ -1,9 +1,11 @@
 const
+  db = require('./graph'),
   bb = require('bluebird'),
   log = require('./logger'),
   jwt = require('jsonwebtoken'),
   jwtVerify = jwt.verify,
-  jwtSign = jwt.sign;
+  jwtSign = jwt.sign,
+  crypto = require('crypto');
 
 function extract(trustoJwt, trustoSecret) {
   try {
@@ -15,8 +17,9 @@ function extract(trustoJwt, trustoSecret) {
   }
 }
 
-module.exports = function(trustoSecret) {
+module.exports = (trustoSecret, saltOptions) => {
   return {
+
     validateMiddleware : (req, res, next) => {
       extract(req.cookies.trustoToken, trustoSecret)
         .then(claims => {
@@ -25,11 +28,13 @@ module.exports = function(trustoSecret) {
         })
         .catch(() => res.status(401).send('please log in').end());
     },
+
     getUserId : (req) => {
       // handle error at endpoint
       return extract(req.cookies.trustoToken, trustoSecret)
         .then(claims => claims.sub);
     },
+
     createJwt: userInfo => {
       const options =
         {
@@ -41,6 +46,19 @@ module.exports = function(trustoSecret) {
         };
 
       return jwtSign({}, trustoSecret, options);
+    },
+
+    validateUser: (userHandle, userSecret) => {
+      const saltedSecret =
+        crypto.pbkdf2Sync(
+          userSecret,
+          saltOptions.salt,
+          saltOptions.iterations,
+          saltOptions.keylen,
+          saltOptions.digest
+        ).toString('hex');
+
+      return db.validateUser(userHandle, saltedSecret);
     }
   };
 };
