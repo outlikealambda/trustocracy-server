@@ -17,6 +17,16 @@ function extract(trustoJwt, trustoSecret) {
   }
 }
 
+function saltSecret(secret, options) {
+  return crypto.pbkdf2Sync(
+    secret,
+    options.salt,
+    options.iterations,
+    options.keylen,
+    options.digest
+  ).toString('hex');
+}
+
 module.exports = (trustoSecret, saltOptions) => {
   return {
 
@@ -49,16 +59,11 @@ module.exports = (trustoSecret, saltOptions) => {
     },
 
     validateUser: (userHandle, userSecret) => {
-      const saltedSecret =
-        crypto.pbkdf2Sync(
-          userSecret,
-          saltOptions.salt,
-          saltOptions.iterations,
-          saltOptions.keylen,
-          saltOptions.digest
-        ).toString('hex');
+      return db.validateUser(userHandle, saltSecret(userSecret, saltOptions));
+    },
 
-      return db.validateUser(userHandle, saltedSecret);
+    createUser: (name, email, secret) => {
+      return db.createUser(name, email, saltSecret(secret, saltOptions));
     }
   };
 };

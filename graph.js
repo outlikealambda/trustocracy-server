@@ -12,7 +12,7 @@ const
 function validateUser(id, saltedSecret) {
   log.info('validating', id, saltedSecret);
   // TODO: actual validation
-  return getUser(id).then(user => user.name ? user : reject('no user found'));
+  return getUser(id).then(user => user.salt === saltedSecret ? user : reject('no user found'));
 }
 
 function getUserInfo(id) {
@@ -32,24 +32,90 @@ function getUserByGoogleId(gaUserId) {
   return cq.query(qb.gaUser(gaUserId)).then(transformer.user);
 }
 
-function createUserWithFacebookId(fbUserId, name) {
-  const query = qb.createFacebookUser(idGenerator.nextUserId(), fbUserId, name);
+function createUser(name, email, salt) {
+  const
+    userByEmail = qb.userByEmail(email);
 
-  return cq.query(query).then(transformer.user);
+  let
+    userId;
+
+  cq.query(userByEmail)
+    .then(transformer.user)
+    .then(user => {
+      if (user.id) {
+        throw 'already exists!';
+      }
+
+      // only generate if new user
+      userId = idGenerator.nextUserId();
+
+      const upgrade = qb.upgradeContact(email, {
+        person: {
+          id: userId,
+          name,
+          salt
+        }
+      });
+
+      return cq.query(upgrade);
+    })
+    .then(transformer.user)
+    .then(user => {
+
+      // successfully upgraded a contact
+      if (user.id) {
+        return user;
+      }
+
+      const createUser = qb.createUser({
+        person: {
+          id: userId,
+          name,
+          salt
+        }
+      });
+
+      return cq.query(createUser)
+        .then(transformer.user)
+        .then(user => {
+          return cq.query(qb.addEmailToUser(user.id, email))
+            .then(() => user);
+        });
+    });
+}
+
+function createUserWithFacebookId(fbUserId, name) {
+  const createUser = qb.createUser({
+    person : {
+      id: idGenerator.nextUserId(),
+      fbUserId,
+      name
+    }
+  });
+
+  return cq.query(createUser).then(transformer.user);
 }
 
 function createUserWithGoogleId(gaUserId, name, email) {
 
   const
     userId = idGenerator.nextUserId(),
-    upgradeContact = qb.upgradeContactToPerson(userId, gaUserId, name, email),
-    createUser = qb.createGoogleUser(userId, gaUserId, name);
+    upgradeContact = qb.upgradeContactToGaPerson(userId, gaUserId, name, email),
+    // createUser = qb.createGoogleUser(userId, gaUserId, name);
+    createUser = qb.createUser({
+      person: {
+        id : userId,
+        gaUserId,
+        name
+      }
+    });
 
   log.info('creating/upgrading google user', gaUserId, name, email);
 
   return cq.query(upgradeContact)
     .then(transformer.user)
     .then(user => {
+
       // we successfully upgraded an existing contact; done
       if (user.id) {
         return user;
@@ -363,6 +429,7 @@ module.exports = {
   getUserInfo,
   getUserByGoogleId,
   getUserByFacebookId,
+  createUser,
   createUserWithFacebookId,
   createUserWithGoogleId,
   getNearestOpinions,

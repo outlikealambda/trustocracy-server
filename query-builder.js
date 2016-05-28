@@ -110,16 +110,27 @@ const queryBuilder = {
             RETURN o, p, q`;
   },
 
-  createFacebookUser: (userId, facebookId, name) => {
-    return `CREATE (p:Person {name: '${name}', id: ${userId}, fbUserId: ${facebookId}}) RETURN p`;
+  // set details with queryWithParams + { person }
+  createUser: () => {
+    return `CREATE (p:Person)
+            SET
+              p = { person }
+            RETURN p`;
   },
 
-  createGoogleUser: (userId, googleId, name) => {
-    // google id is too long as an int, so convert it to a string
-    return `CREATE (p:Person {name: '${name}', id: ${userId}, gaUserId: '${googleId}'}) RETURN p`;
+  upgradeContact: email => {
+    return `MATCH (c:Contact)-[${rel.personEmail.hasEmail}]->(e:Email {email: '${email}'})
+            REMOVE c:Contact
+            SET
+              c :Person,
+              c = { person }
+            `;
+
   },
 
-  upgradeContactToPerson: (userId, gaUserId, name, email) => {
+  // TODO: pass userId, gaUserId and name as { person }, like upgradeContact above
+  // aka: migrate to upgradeContact
+  upgradeContactToGaPerson: (userId, gaUserId, name, email) => {
     return `MATCH (c:Contact)-[${rel.personEmail.hasEmail}]->(e:Email {email:'${email}'})
             REMOVE c:Contact
             SET c :Person, c.name = '${name}', c.id = ${userId}, c.gaUserId = '${gaUserId}'

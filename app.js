@@ -80,20 +80,31 @@ app.get('/api/topic', (req, res) => {
     .then(topics => res.send(topics).end());
 });
 
+app.post('/api/signup', (req, res) => {
+  const {name, email, password} = req.body;
+
+  db.createUser(name, email, password)
+    .then(user => db.getUserInfo(user.id))
+    .then(userInfo => res.send(userInfo).end())
+    .catch(err => {
+      log.info('error signing up', err);
+      res.status(500).send('sign up failed');
+    });
+});
 
 // validates the user against the db
 app.get('/api/login', (req, res) => {
   const
     authorization = req.headers.authorization || '',
     [, basicAuth]= authorization.split('Basic '),
-    [handle, secret] = basicAuth ? Buffer.from(basicAuth, 'base64').toString('ascii').split(':') : ['', ''];
+    [userName, secret] = basicAuth ? Buffer.from(basicAuth, 'base64').toString('ascii').split(':') : ['', ''];
 
-  if (!handle) {
+  if (!userName) {
     res.status(401).send('missing basic auth credentials').end();
     return;
   }
 
-  trustoAuth.validateUser(handle, secret)
+  trustoAuth.validateUser(userName, secret)
     .then(user => db.getUserInfo(user.id))
     .then(userInfo => saveUserAsCookie(res, userInfo).send(userInfo).end())
     .catch(() => {
