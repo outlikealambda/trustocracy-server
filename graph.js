@@ -12,7 +12,7 @@ const
 function validateUser(id, saltedSecret) {
   log.info('validating', id, saltedSecret);
   // TODO: actual validation
-  return getUser(id).then(user => user.salt === saltedSecret ? user : reject('no user found'));
+  return getUser(id).then(user => !user.salt || user.salt === saltedSecret ? user : reject('no user found'));
 }
 
 function getUserInfo(id) {
