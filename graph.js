@@ -6,6 +6,7 @@ const
   qb = require('./query-builder'),
   idGenerator = require('./id-generator'),
   log = require('./logger'),
+  models = require('./models'),
   _ = require('lodash');
 
 
@@ -198,7 +199,7 @@ function getOpinionsByTopic(topicId) {
 function getOpinionByUserTopic(userId, topicId) {
   return cq.query(qb.opinionDraftByUserTopic(userId, topicId))
     .then(transformer.opinion)
-    .then(opinion => opinion ? opinion : {} );
+    .then(opinion => opinion ? opinion : models.opinion );
 }
 
 function getNearestOpinions(userId, topicId) {
