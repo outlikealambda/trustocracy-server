@@ -62,6 +62,15 @@ const queryBuilder = {
             RETURN type(fr), f, extract(r in rs | type(r)) as extracted, ff, o`;
   },
 
+  connected: (userId, topicId) => {
+    return `MATCH (author:Person)-[${rel.personOpinion.opines}]->(o:Opinion)-[:ADDRESSES]->(t:Topic)
+            WHERE t.id=${topicId}
+            WITH o, author
+            MATCH (u:Person)-[fr${rel.personPerson.follows}]->(f:Person)-[rs${rel.personPerson.follows}*0..3]->(author)
+            WHERE u.id=${userId}
+            RETURN o, author, COLLECT([type(fr), f, extract(r in rs | type(r))]) as connections`;
+  },
+
   opinionsByIds: ids => {
     const idList = ids.join();
     return `MATCH (p:Person) --> (o:Opinion)

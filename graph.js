@@ -212,6 +212,11 @@ function getNearestOpinions(userId, topicId) {
     .then(transformer.nearest);
 }
 
+function getConnectedOpinions(userId, topicId) {
+  return cq.query(qb.connected(userId, topicId))
+    .then(transformer.connected);
+}
+
 function getTopic(id) {
   return cq.query(qb.topic(id))
     .then(transformer.topic);
@@ -287,6 +292,25 @@ const transformer = {
   topic : extractFirstResult,
 
   topics : extractFirstResults,
+
+  connected : neoData => extractAllData(neoData, row => {
+    const
+      [opinion, author, rawConnections] = row,
+      connections = rawConnections.map(rawConnection => {
+        const [relationship, friend, hops] = rawConnection;
+
+        return {
+          friend: Object.assign(friend, {relationship: relationship}),
+          hops
+        };
+      });
+
+    return {
+      opinion,
+      author,
+      connections
+    };
+  }),
 
   nearest: neoData => {
     const scoredPaths = extractAllData(neoData, row => {
@@ -434,6 +458,7 @@ module.exports = {
   createUserWithFacebookId,
   createUserWithGoogleId,
   getNearestOpinions,
+  getConnectedOpinions,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,

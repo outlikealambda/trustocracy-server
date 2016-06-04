@@ -252,6 +252,16 @@ app.get('/api/secure/topic/:topicId/connected', function(req, res) {
     .then(nearest => res.send(nearest).end());
 });
 
+
+app.get('/api/secure/topic/:topicId/connected/v2', function(req, res) {
+  const
+    topicId = req.params.topicId,
+    userId = req.userId;
+
+  db.getConnectedOpinions(userId, topicId)
+    .then(nearest => res.send(nearest).end());
+});
+
 // returns the opinion (if it exists) a :userId has written on :topicId
 // TODO: make sure that :userId matches cookie Id
 app.get('/api/secure/topic/:topicId/opinion', function(req, res) {
