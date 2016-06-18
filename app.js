@@ -270,6 +270,27 @@ app.get('/api/secure/topic/:topicId/opinion', function(req, res) {
     userId = req.userId;
 
   db.getOpinionByUserTopic(userId, topicId)
+    .then(log.promise('user opinion'))
+    .then(opinion => {
+      if (opinion.id === -1) {
+        return db.getUser(userId)
+          .then(user => {
+            const author = Object.assign(
+              {},
+              user,
+              {relationship : 'SELF'}
+            );
+
+            return Object.assign(
+              {},
+              opinion,
+              {author}
+            );
+          });
+      } else {
+        return opinion;
+      }
+    })
     .then(opinion => res.send(opinion).end());
 });
 
