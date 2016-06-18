@@ -68,7 +68,8 @@ const queryBuilder = {
             WITH o, author
             MATCH (u:Person)-[fr${rel.personPerson.follows}]->(f:Person)-[rs${rel.personPerson.follows}*0..3]->(author)
             WHERE u.id=${userId}
-            RETURN o, author, COLLECT([type(fr), f, extract(r in rs | type(r))]) as connections`;
+            OPTIONAL MATCH (o) <-- (q:Qualifications)
+            RETURN o, author, COLLECT([type(fr), f, extract(r in rs | type(r))]) as connections, q`;
   },
 
   opinionsByIds: ids => {
@@ -160,7 +161,7 @@ const queryBuilder = {
   },
 
   unpublishOpinion: (userId, topicId) => {
-    return `MATCH (p:Person)-[r:${rel.personOpinion.opines}]->(:Opinion)-->(t:Topic)
+    return `MATCH (p:Person)-[r${rel.personOpinion.opines}]->(:Opinion)-->(t:Topic)
             WHERE p.id=${userId} AND t.id=${topicId}
             DELETE r`;
   },
