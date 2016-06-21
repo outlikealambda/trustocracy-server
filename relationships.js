@@ -15,7 +15,15 @@ module.exports = {
     opines: ':OPINES',
     thinks: ':THINKS'
   },
+  personLocation :{
+    constituentOf: ':CONSTITUENT_OF'
+  },
   opinionTopic : {
     addresses: ':ADDRESSES'
+  },
+  locationRel : {
+    country : ':COUNTRY',
+    city : ':CITY',
+    postalCode : ':POSTAL'
   }
 };

@@ -179,6 +179,12 @@ function saveOpinion(userId, topicId, qualifiedOpinion) {
     });
 }
 
+//gets location by user id
+function getLocationById(userId) {
+  return cq.query(qb.locationByUserId(userId))
+    .then(transformer.location);
+}
+
 function getOpinionById(opinionId) {
   return cq.query(qb.opinionById(opinionId))
     .then(transformer.opinion);
@@ -242,6 +248,16 @@ function connectUserToEmails(userId, emailsWithDups) {
     .then(() => cq.query(qb.knowAllUnconnectedEmails(userId, emails)));
 }
 
+/*
+given userId, and string values for:
+location, country, city
+and number:
+postal
+a user to location relationship is created
+*/
+function connectUserToLocation(userId, location, country, city, postal) {
+  return cq.query(qb.addFullLocationToUser(userId, location, country, city, postal));
+}
 
 const transformer = {
   user : extractFirstResult,
@@ -282,6 +298,8 @@ const transformer = {
   }),
 
   emails : neoData => extractAllData(neoData, row => row[0].email),
+
+  location : neoData => extractAllData(neoData, extractUserLocation),
 
   opinion : neoData => extractFirstData(neoData, extractUserOpinion),
 
@@ -410,6 +428,18 @@ function noResults(neoData) {
   return false;
 }
 
+function extractUserLocation(row) {
+  const [country, city, postal] = row;
+
+  return Object.assign(
+    {},
+
+    {country: country.name},
+    {city: city.name},
+    {postal: postal.name}
+  );
+}
+
 // Record specific extractions
 function extractUserOpinion(row) {
   const [opinion, opiner, qualifications] = row;
@@ -454,11 +484,13 @@ module.exports = {
   getUserInfo,
   getUserByGoogleId,
   getUserByFacebookId,
+  connectUserToLocation,
   createUser,
   createUserWithFacebookId,
   createUserWithGoogleId,
   getNearestOpinions,
   getConnectedOpinions,
+  getLocationById,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,

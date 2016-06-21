@@ -92,6 +92,7 @@ app.post('/api/signup', (req, res) => {
     });
 });
 
+
 // validates the user against the db
 app.get('/api/login', (req, res) => {
   const
@@ -217,6 +218,27 @@ app.get('/api/secure/user', function(req, res) {
     .catch(error => {
       log.info(error);
       res.status(404).end('Unknown user');
+    });
+});
+
+//returns the location assosciated with the given user id
+app.get('/api/:userId/location', (req,res) => {
+  const userId = req.params.userId;
+  log.info(userId);
+  db.getLocationById(userId)
+    .then(location => res.send(location).end());
+});
+
+//creates relationships between user and location components
+app.post('/api/:userId/location', (req,res) => {
+  const {location, country, city, postal} = req.body,
+    userId = req.params.userId;
+
+  db.connectUserToLocation(userId, location, country, city, postal)
+    .then(() => res.send(req.body).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
     });
 });
 

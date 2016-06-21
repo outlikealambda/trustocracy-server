@@ -37,6 +37,70 @@ const queryBuilder = {
         .join(', ');
   },
 
+  //parameters user id
+  //returns [Locations: [Country, City, Postal]]
+  locationByUserId : userId => {
+    return `MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:POSTAL]->(postal:Postal))
+            MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:CITY]->(city:City))
+            MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:COUNTRY]->(country:Country))
+            WHERE p.id = ${userId}
+            RETURN country, city, postal`;
+  },
+
+  /*
+  this method creates 4 relationships given a userId and
+  location, country, city, and postal names
+  relationships:
+  CONSTITUENT_OF
+  POSTAL
+  CITY
+  and country
+  */
+  addFullLocationToUser: (userId, location, country, city, postal) => {
+    return `MERGE (co:Country {name:"${country}"})
+            MERGE (ci:City {name:"${city}"})
+            MERGE (po:Postal {name:${postal}})
+            WITH co, ci, po
+            MATCH (p:Person {id : ${userId}})
+            MERGE (p)-[${rel.personLocation.constituentOf}]->(l:Location {name: "${location}"})
+            MERGE (l)-[${rel.locationRel.country}]->(co)
+            MERGE (l)-[${rel.locationRel.city}]->(ci)
+            MERGE (l)-[${rel.locationRel.postalCode}]->(po)`;
+  },
+
+  addLocationToUser: (userId, location) => {
+    return `Match (p:Person)
+            WHERE p.id = ${userId}
+            MERGE (p)-[${rel.personLocation.constituentOf}]->(l:Location {name: "${location}"}`;
+  },
+
+  //this method creates a relationship
+  //POSTAL from location to postal code
+  addPostalToLocation: (locationId, postal) => {
+    return `Match (l:Location)
+            WHERE l.id = ${locationId}
+            MERGE (l)-[${rel.locationRel.postalCode}]->(po:Postal {name:${postal}})`;
+  },
+
+  //this method creates a relationship
+  //CITY from location to city
+  addCityToLocation: (locationId, city) => {
+    return `Match (l:Location)
+            WHERE l.id = ${locationId}
+            MERGE (l)-[${rel.locationRel.city}]->(ci:City {name:"${city}"})`;
+  },
+
+  //this method creates a relationship
+  //COUNTRY from location to country
+  addCountryToLocation: (locationId, country) => {
+    return `Match (l:Location)
+            WHERE l.id = ${locationId}
+            MERGE (l)-[${rel.locationRel.country}]->(co:Country {name:"${country}"})`;
+  },
+
+
+
+
   // adds a :KNOWS relationship to all people (users/contacts) who aren't
   // already related to userId
   knowAllUnconnectedEmails: (userId, emails) => {

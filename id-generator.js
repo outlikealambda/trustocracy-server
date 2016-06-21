@@ -5,12 +5,17 @@ const
   current = {
     opinion: 0,
     user: 0,
-    topic: 0
+    topic: 0,
+    location: 0
   };
 
 function init() {
   return join(getOpinionMax(), getUserMax(), getTopicMax())
     .then(log.promise('id generator initial values'));
+}
+
+function nextLocationId() {
+  return current.location += 1;
 }
 
 function nextOpinionId() {
