@@ -200,30 +200,6 @@ app.get('/favicon.ico', (req, res) => {
   res.end();
 });
 
-app.delete('/api/:locationId/location', (req,res) =>{
-  const
-    locationId = req.params.locationId;
-
-  db.removeLocation(locationId)
-    .then(() => res.send().end())
-    .catch(error => {
-      log.info(error);
-      res.status(500).end('server error!');
-    });
-});
-
-app.post('/api/:userId/:locationId/updateLocation', (req,res) =>{
-  const {locationName, country, city, postal} = req.body,
-    userId = req.params.userId,
-    locationId = req.params.locationId;
-
-  db.updateLocation(locationId, userId, locationName, country, city, postal)
-    .then(() => res.send().end())
-    .catch(error => {
-      log.info(error);
-      res.status(500).end('server error!');
-    });
-});
 
 
 // ----------------
@@ -247,7 +223,7 @@ app.get('/api/secure/user', function(req, res) {
 });
 
 //returns the location assosciated with the given user id
-app.get('/api/:userId/location', (req,res) => {
+app.get('/api/secure/getLocation', (req,res) => {
   const userId = req.params.userId;
   log.info(userId);
   db.getLocationById(userId)
@@ -255,12 +231,37 @@ app.get('/api/:userId/location', (req,res) => {
 });
 
 //creates relationships between user and location components
-app.post('/api/:userId/location', (req,res) => {
+app.post('/api/secure/postLocation', (req,res) => {
   const {locationName, country, city, postal} = req.body,
-    userId = req.params.userId;
+    userId = req.userId;
 
   db.connectUserToLocation(userId, locationName, country, city, postal)
     .then(() => res.send(req.body).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+});
+
+app.delete('/api/secure/:locationId/deleteLocation', (req,res) =>{
+  const
+    locationId = req.locationId;
+
+  db.removeLocation(locationId)
+    .then(() => res.send().end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+});
+
+app.post('/api/secure/:locationId/updateLocation', (req,res) =>{
+  const {locationName, country, city, postal} = req.body,
+    userId = req.userId,
+    locationId = req.params.locationId;
+
+  db.updateLocation(locationId, userId, locationName, country, city, postal)
+    .then(() => res.send().end())
     .catch(error => {
       log.info(error);
       res.status(500).end('server error!');
