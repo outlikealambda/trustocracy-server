@@ -232,8 +232,9 @@ function createOpinion({userId, opinionId, topicId}) {
     query =
       `MATCH (a:Person), (t:Topic)
        WHERE a.id=${userId} AND t.id=${topicId}
-       CREATE (o:Opinion {id:${opinionId}, text:"${text}"}),
-              (a)-[:OPINES]->(o)-[:ADDRESSES]->(t)`;
+       CREATE (o:Opinion {id:${opinionId}, text:"${text}", created:0}),
+              (a)-[:OPINES]->(o)-[:ADDRESSES]->(t),
+              (a)-[:THINKS]->(o)`;
 
   // console.log('user: ' + userId + ', opinion: ' + opinionId);
 
