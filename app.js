@@ -200,6 +200,31 @@ app.get('/favicon.ico', (req, res) => {
   res.end();
 });
 
+app.delete('/api/:locationId/location', (req,res) =>{
+  const
+    locationId = req.params.locationId;
+
+  db.removeLocation(locationId)
+    .then(() => res.send().end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+});
+
+app.post('/api/:userId/:locationId/updateLocation', (req,res) =>{
+  const {locationName, country, city, postal} = req.body,
+    userId = req.params.userId,
+    locationId = req.params.locationId;
+
+  db.updateLocation(locationId, userId, locationName, country, city, postal)
+    .then(() => res.send().end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+});
+
 
 // ----------------
 // CLOSED ENDPOINTS
@@ -231,10 +256,10 @@ app.get('/api/:userId/location', (req,res) => {
 
 //creates relationships between user and location components
 app.post('/api/:userId/location', (req,res) => {
-  const {location, country, city, postal} = req.body,
+  const {locationName, country, city, postal} = req.body,
     userId = req.params.userId;
 
-  db.connectUserToLocation(userId, location, country, city, postal)
+  db.connectUserToLocation(userId, locationName, country, city, postal)
     .then(() => res.send(req.body).end())
     .catch(error => {
       log.info(error);

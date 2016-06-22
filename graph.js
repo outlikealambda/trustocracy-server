@@ -255,8 +255,21 @@ and number:
 postal
 a user to location relationship is created
 */
-function connectUserToLocation(userId, location, country, city, postal) {
-  return cq.query(qb.addFullLocationToUser(userId, location, country, city, postal));
+function connectUserToLocation(userId, locationName, country, city, postal) {
+  const
+    locationId = idGenerator.nextLocationId();
+  return cq.query(qb.addFullLocationToUser(userId, locationId, locationName, country, city, postal));
+}
+
+function removeLocation(locationId) {
+  return cq.query(qb.removeLocation(locationId));
+}
+
+function updateLocation(locationId, userId, locationName, country, city, postal) {
+  const
+    newLocationId = idGenerator.nextLocationId();
+  return cq.query(qb.removeLocation(locationId))
+    .then(() => cq.query(qb.addFullLocationToUser(userId, newLocationId, locationName, country, city, postal)));
 }
 
 const transformer = {
@@ -429,11 +442,12 @@ function noResults(neoData) {
 }
 
 function extractUserLocation(row) {
-  const [country, city, postal] = row;
+  const [location, country, city, postal] = row;
 
   return Object.assign(
     {},
 
+    location,
     {country: country.name},
     {city: city.name},
     {postal: postal.name}
@@ -516,7 +530,8 @@ module.exports = {
   getTopics,
 
   delegate,
-
+  updateLocation,
+  removeLocation,
   validateUser,
 
   connectUserToEmails

@@ -44,7 +44,7 @@ const queryBuilder = {
             MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:CITY]->(city:City))
             MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:COUNTRY]->(country:Country))
             WHERE p.id = ${userId}
-            RETURN country, city, postal`;
+            RETURN l, country, city, postal`;
   },
 
   /*
@@ -56,13 +56,13 @@ const queryBuilder = {
   CITY
   and country
   */
-  addFullLocationToUser: (userId, location, country, city, postal) => {
+  addFullLocationToUser: (userId, locationId, locationName, country, city, postal) => {
     return `MERGE (co:Country {name:"${country}"})
             MERGE (ci:City {name:"${city}"})
             MERGE (po:Postal {name:${postal}})
             WITH co, ci, po
             MATCH (p:Person {id : ${userId}})
-            MERGE (p)-[${rel.personLocation.constituentOf}]->(l:Location {name: "${location}"})
+            MERGE (p)-[${rel.personLocation.constituentOf}]->(l:Location {id: ${locationId}, name: "${locationName}"})
             MERGE (l)-[${rel.locationRel.country}]->(co)
             MERGE (l)-[${rel.locationRel.city}]->(ci)
             MERGE (l)-[${rel.locationRel.postalCode}]->(po)`;
@@ -98,7 +98,15 @@ const queryBuilder = {
             MERGE (l)-[${rel.locationRel.country}]->(co:Country {name:"${country}"})`;
   },
 
-
+  //this method removes a location node and all of its relationships
+  removeLocation: (locationId) => {
+    return `MATCH (l:Location)-[p:POSTAL]->(:Postal)
+            MATCH (l:Location)-[c:CITY]->(:City)
+            MATCH (l:Location)-[co:COUNTRY]->(:Country)
+            MATCH (:Person)-[cf:CONSTITUENT_OF]->(l:Location)
+            WHERE l.id  = ${locationId}
+            DELETE p,c,co,cf,l`;
+  },
 
 
   // adds a :KNOWS relationship to all people (users/contacts) who aren't
