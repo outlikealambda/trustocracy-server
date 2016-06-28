@@ -19,6 +19,9 @@ function validateUser(id, saltedSecret) {
 function getUserInfo(id) {
   return cq.query(qb.userInfo(id)).then(transformer.userInfo);
 }
+function getUserInfo2(id) {
+  return cq.query(qb.userInfo2(id)).then(transformer.userInfo2);
+}
 
 function getUser(id) {
   return cq.query(qb.user(id)).then(transformer.user);
@@ -310,6 +313,8 @@ const transformer = {
     };
   }),
 
+  userInfo2 : neoData => extractFirstData(neoData, extractFullUser),
+
   emails : neoData => extractAllData(neoData, row => row[0].email),
 
   location : neoData => extractAllData(neoData, extractUserLocation),
@@ -326,25 +331,20 @@ const transformer = {
 
   connected : neoData => extractAllData(neoData, row => {
     const
-      [opinion, author, rawConnections, qualifications] = row,
-      paths = rawConnections.map(rawConnection => {
+      [opinion, author, rawConnections] = row,
+      connections = rawConnections.map(rawConnection => {
         const [relationship, friend, hops] = rawConnection;
 
         return {
-          trustee: Object.assign({}, friend, {relationship: relationship}),
-          hops,
-          score: scorePath(hops)
+          friend: Object.assign(friend, {relationship: relationship}),
+          hops
         };
       });
 
     return {
-      opinion: Object.assign(
-        {},
-        opinion,
-        {author},
-        {qualifications}
-      ),
-      paths: selectBestPaths(paths)
+      opinion,
+      author,
+      connections
     };
   }),
 
@@ -445,32 +445,47 @@ function noResults(neoData) {
   // has results
   return false;
 }
+function extractFullUser(row){
+  const [user, emails, location, country, city, postal] = row;
 
+  return(
+    { name: user.name,
+      id: user.id,
+      emails: emails,
+      location :
+        { name: location.name,
+          id: location.id,
+          country: country.name,
+          city: city.name,
+          postal: postal.name
+        }
+    }
+  );
+}
 function extractUserLocation(row) {
   const [location, country, city, postal] = row;
 
-  return Object.assign(
-    {},
-
-    location,
-    {country: country.name},
-    {city: city.name},
-    {postal: postal.name}
+  return(
+    { id: location.id,
+      name: location.name,
+      country: country.name,
+      city: city.name,
+      postal: postal.name
+    }
   );
 }
 
 // Record specific extractions
 function extractUserOpinion(row) {
-  const [opinion, author, qualifications] = row;
+  const [opinion, opiner, qualifications] = row;
 
   return Object.assign(
     {},
     opinion,
-    { author },
-    { qualifications }
+    { opiner : opiner },
+    { qualifications: qualifications }
   );
 }
-
 
 function getUniqueStartFinishCombos(scoredPaths) {
   const map = new Map();
@@ -484,22 +499,6 @@ function getUniqueStartFinishCombos(scoredPaths) {
   }
 
   return [...map.values()];
-}
-
-// since there may be multiple paths between a trustee and an opinion
-// only show the one with the lowest score
-function selectBestPaths(paths) {
-  const lowestScores = new Map();
-
-  for (let path of paths) {
-    const currentLowest = lowestScores.get(path.trustee.name);
-
-    if (!currentLowest || path.score < currentLowest.score) {
-      lowestScores.set(path.trustee.name, path);
-    }
-  }
-
-  return [...lowestScores.values()];
 }
 
 function scorePath(path) {
@@ -517,8 +516,8 @@ function scorePath(path) {
 }
 
 module.exports = {
-  getUser,
   getUserInfo,
+  getUserInfo2,
   getUserByGoogleId,
   getUserByFacebookId,
   connectUserToLocation,

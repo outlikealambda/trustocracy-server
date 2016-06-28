@@ -37,6 +37,10 @@ app.use(cookieParser());
 // ------------------------------
 
 
+
+
+
+
 // returns a single opinion
 app.get('/api/opinion/:opinionId', (req, res) => {
   const {opinionId} = req.params;
@@ -200,6 +204,21 @@ app.get('/favicon.ico', (req, res) => {
   res.end();
 });
 
+//get user location and other shit
+app.get('/api/:userId', function(req, res) {
+  const
+    userId = req.params.userId;
+
+  db.getUserInfo2(userId)
+    .then(userInfo => {
+      log.info(userInfo);
+      res.send(userInfo).end();
+    })
+    .catch(error => {
+      log.info(error);
+      res.status(404).end('Unknown user');
+    });
+});
 
 
 // ----------------
@@ -223,17 +242,20 @@ app.get('/api/secure/user', function(req, res) {
 });
 
 //returns the location assosciated with the given user id
-app.get('/api/secure/getLocation', (req,res) => {
-  const userId = req.params.userId;
+//GET LOCATION
+app.get('/api/:userId/getLocation', (req,res) => {
+  const
+    userId = req.params.userId;
   log.info(userId);
   db.getLocationById(userId)
     .then(location => res.send(location).end());
 });
 
 //creates relationships between user and location components
-app.post('/api/secure/postLocation', (req,res) => {
+//POST LOCATION
+app.post('/api/:userId/postLocation', (req,res) => {
   const {locationName, country, city, postal} = req.body,
-    userId = req.userId;
+    userId = req.params.userId;
 
   db.connectUserToLocation(userId, locationName, country, city, postal)
     .then(() => res.send(req.body).end())
@@ -243,9 +265,10 @@ app.post('/api/secure/postLocation', (req,res) => {
     });
 });
 
-app.delete('/api/secure/:locationId/deleteLocation', (req,res) =>{
+//DELETE LOCATION
+app.delete('/api/:locationId/deleteLocation', (req,res) =>{
   const
-    locationId = req.locationId;
+    locationId = req.params.locationId;
 
   db.removeLocation(locationId)
     .then(() => res.send().end())
@@ -255,9 +278,10 @@ app.delete('/api/secure/:locationId/deleteLocation', (req,res) =>{
     });
 });
 
-app.post('/api/secure/:locationId/updateLocation', (req,res) =>{
+//UPDATE LOCATION
+app.post('/api/:userId/:locationId/updateLocation', (req,res) =>{
   const {locationName, country, city, postal} = req.body,
-    userId = req.userId,
+    userId = req.params.userId,
     locationId = req.params.locationId;
 
   db.updateLocation(locationId, userId, locationName, country, city, postal)

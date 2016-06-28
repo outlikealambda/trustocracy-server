@@ -18,6 +18,22 @@ const queryBuilder = {
             RETURN u as user, emails, collect({friend: f, relationship: type(r)}) as neighbors`;
   },
 
+  userInfo2: id => {
+    return `MATCH (u:Person)-[${rel.personEmail.hasEmail}]->(e:Email)
+            WHERE u.id = ${id}
+            WITH u, collect(e.email) as emails
+            OPTIONAL MATCH (u)-->(l:Location)
+            OPTIONAL MATCH (l)-->(co:Country)
+            OPTIONAL MATCH (l)-->(ci:City)
+            OPTIONAL MATCH (l)-->(po:Postal)
+            RETURN u as user
+                  ,emails
+                  ,l as location
+                  ,co as country
+                  ,ci as city
+                  ,po as postal`;
+  },
+
   userByEmail: email => {
     return `MATCH (e:Email)<-[${rel.personEmail.hasEmail}]-(u:Person)
             WHERE e.email = '${email}'
