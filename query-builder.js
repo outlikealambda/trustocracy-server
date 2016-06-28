@@ -72,6 +72,8 @@ const queryBuilder = {
             RETURN o, author, COLLECT([type(fr), f, extract(r in rs | type(r))]) as connections, q`;
   },
 
+  connectedPluginCall: (userId, topicId) => `CALL traverse.distance(${userId}, ${topicId}, 6)`,
+
   opinionsByIds: ids => {
     const idList = ids.join();
     return `MATCH (p:Person) --> (o:Opinion)

@@ -36,7 +36,6 @@ app.use(cookieParser());
 // OPEN ENDPOINTS (no-validation)
 // ------------------------------
 
-
 // returns a single opinion
 app.get('/api/opinion/:opinionId', (req, res) => {
   const {opinionId} = req.params;
@@ -240,7 +239,6 @@ app.get('/api/secure/gaContacts', (req, res) => {
 });
 
 // returns connected opinions for a user/topic
-// TODO: make sure that :userId matches cookie Id
 app.get('/api/secure/topic/:topicId/connected', function(req, res) {
   const
     topicId = req.params.topicId,
@@ -253,13 +251,60 @@ app.get('/api/secure/topic/:topicId/connected', function(req, res) {
 });
 
 
+// returns an array of objects containing both paths to the opinion and the
+// opinion itself:
+// {
+//   opinion: {
+//     text: "the opinion text",
+//     id: 1,
+//     author: {
+//       name: "bob",
+//       id: 1,
+//       relationship: "NONE"
+//     },
+//     influence: 3
+//   },
+//   paths: [
+//     {
+//       trustee: {
+//         name: "Mike",
+//         id: 2,
+//         relationship: "TRUSTS"
+//       },
+//       hops: [
+//         "TRUSTS",
+//         "TRUSTS_EXPLICITLY",
+//         "DELEGATES"
+//       ]
+//     }
+//   ]
+// }
 app.get('/api/secure/topic/:topicId/connected/v2', function(req, res) {
   const
     topicId = req.params.topicId,
     userId = req.userId;
 
   db.getConnectedOpinions(userId, topicId)
-    .then(nearest => res.send(nearest).end());
+    .then(nearest => res.send(nearest).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+});
+
+// uses a native Neo4j plugin to retrieve connections, as opposed to a cypher
+// query
+app.get('/api/secure/topic/:topicId/connected/v3', function(req, res) {
+  const
+    topicId = req.params.topicId,
+    userId = req.userId;
+
+  db.getConnectedOpinionsViaPlugin(userId, topicId)
+    .then(nearest => res.send(nearest).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
 });
 
 // returns the opinion (if it exists) a :userId has written on :topicId

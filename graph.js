@@ -217,6 +217,11 @@ function getConnectedOpinions(userId, topicId) {
     .then(transformer.connected);
 }
 
+function getConnectedOpinionsViaPlugin(userId, topicId) {
+  return cq.query(qb.connectedPluginCall(userId, topicId))
+    .then(transformer.connectedPlugin);
+}
+
 function getTopic(id) {
   return cq.query(qb.topic(id))
     .then(transformer.topic);
@@ -314,6 +319,15 @@ const transformer = {
         {qualifications}
       ),
       paths: selectBestPaths(paths)
+    };
+  }),
+
+  connectedPlugin : neoData => extractAllData(neoData, row => {
+    const [paths, opinion] = row;
+
+    return {
+      opinion,
+      paths
     };
   }),
 
@@ -482,6 +496,7 @@ module.exports = {
   createUserWithGoogleId,
   getNearestOpinions,
   getConnectedOpinions,
+  getConnectedOpinionsViaPlugin,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,
