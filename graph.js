@@ -264,8 +264,8 @@ function connectUserToLocation(userId, locationName, country, city, postal) {
   return cq.query(qb.addFullLocationToUser(userId, locationId, locationName, country, city, postal));
 }
 
-function removeLocation(locationId) {
-  return cq.query(qb.removeLocation(locationId));
+function removeLocation(userId) {
+  return cq.query(qb.removeLocation(userId));
 }
 
 function updateLocation(locationId, userId, locationName, country, city, postal) {

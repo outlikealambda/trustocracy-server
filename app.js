@@ -266,11 +266,11 @@ app.post('/api/:userId/postLocation', (req,res) => {
 });
 
 //DELETE LOCATION
-app.delete('/api/:locationId/deleteLocation', (req,res) =>{
+app.delete('/api/:userId/deleteLocation', (req,res) =>{
   const
-    locationId = req.params.locationId;
+    userId = req.params.userId;
 
-  db.removeLocation(locationId)
+  db.removeLocation(userId)
     .then(() => res.send().end())
     .catch(error => {
       log.info(error);
