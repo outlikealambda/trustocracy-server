@@ -279,12 +279,11 @@ app.delete('/api/:userId/deleteLocation', (req,res) =>{
 });
 
 //UPDATE LOCATION
-app.post('/api/:userId/:locationId/updateLocation', (req,res) =>{
+app.post('/api/:userId/updateLocation', (req,res) =>{
   const {locationName, country, city, postal} = req.body,
     userId = req.params.userId,
-    locationId = req.params.locationId;
 
-  db.updateLocation(locationId, userId, locationName, country, city, postal)
+  db.updateLocation(userId, locationName, country, city, postal)
     .then(() => res.send().end())
     .catch(error => {
       log.info(error);

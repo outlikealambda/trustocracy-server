@@ -268,10 +268,10 @@ function removeLocation(userId) {
   return cq.query(qb.removeLocation(userId));
 }
 
-function updateLocation(locationId, userId, locationName, country, city, postal) {
+function updateLocation(userId, locationName, country, city, postal) {
   const
     newLocationId = idGenerator.nextLocationId();
-  return cq.query(qb.removeLocation(locationId))
+  return cq.query(qb.removeLocation(userId))
     .then(() => cq.query(qb.addFullLocationToUser(userId, newLocationId, locationName, country, city, postal)));
 }
 
