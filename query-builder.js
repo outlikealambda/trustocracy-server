@@ -120,10 +120,10 @@ const queryBuilder = {
             WHERE p.id =${userId}
             DELETE cf
             WITH l
-            MATCH (l:Location)-[ci:CITY]->(:Postal)
+            MATCH (l:Location)-[po:POSTAL]->(:Postal)
             MATCH (l:Location)-[ci:CITY]->(:City)
             MATCH (l:Location)-[co:COUNTRY]->(:Country)
-            DELETE ci,co,l;`;
+            DELETE po,ci,co,l;`;
   },
 
 
