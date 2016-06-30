@@ -323,7 +323,17 @@ const transformer = {
   }),
 
   connectedPlugin : neoData => extractAllData(neoData, row => {
-    const [paths, opinion] = row;
+    const
+      [unscoredPaths, opinion] = row,
+      paths = unscoredPaths.map(path => {
+        const {hops} = path;
+
+        return Object.assign(
+          {},
+          path,
+          { score: scorePath(hops) + scoreRelationship(path.trustee.relationship) }
+        );
+      });
 
     return {
       opinion,
@@ -473,17 +483,19 @@ function selectBestPaths(paths) {
 }
 
 function scorePath(path) {
-  return path.reduce((score, step) => {
-    switch (step) {
-    case 'TRUSTS_EXPLICITLY':
-      return score + 1;
-    case 'TRUSTS':
-      return score + 2;
-    default:
-      log.info(`What kind of path is this: ${step}?`);
-      return score;
-    }
-  }, 0);
+  return path.reduce((score, hop) => score + scoreRelationship(hop), 0);
+}
+
+function scoreRelationship(relationship) {
+  switch (relationship) {
+  case 'TRUSTS_EXPLICITLY':
+    return 1;
+  case 'TRUSTS':
+    return 2;
+  default:
+    log.info(`What kind of path is this: ${relationship}?`);
+    return 0;
+  }
 }
 
 module.exports = {
