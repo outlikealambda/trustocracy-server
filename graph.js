@@ -447,18 +447,22 @@ function noResults(neoData) {
 }
 function extractFullUser(row){
   const [user, emails, location, country, city, postal] = row;
+  let locay = {};
 
+  if (location){
+    locay ={
+      name: location.name,
+      id: location.id,
+      country: country.name,
+      city: city.name,
+      postal: postal.name
+    };
+  }
   return(
     { name: user.name,
       id: user.id,
       emails: emails,
-      location :
-        { name: location.name,
-          id: location.id,
-          country: country.name,
-          city: city.name,
-          postal: postal.name
-        }
+      location: locay
     }
   );
 }

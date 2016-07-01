@@ -254,10 +254,10 @@ app.get('/api/:userId/getLocation', (req,res) => {
 //creates relationships between user and location components
 //POST LOCATION
 app.post('/api/:userId/postLocation', (req,res) => {
-  const {locationName, country, city, postal} = req.body,
+  const {name, country, city, postal} = req.body,
     userId = req.params.userId;
 
-  db.connectUserToLocation(userId, locationName, country, city, postal)
+  db.connectUserToLocation(userId, name, country, city, postal)
     .then(() => res.send(req.body).end())
     .catch(error => {
       log.info(error);
@@ -280,10 +280,12 @@ app.delete('/api/:userId/deleteLocation', (req,res) =>{
 
 //UPDATE LOCATION
 app.post('/api/:userId/updateLocation', (req,res) =>{
-  const {locationName, country, city, postal} = req.body,
+  const {name, country, city, postal} = req.body,
     userId = req.params.userId;
 
-  db.updateLocation(userId, locationName, country, city, postal)
+  log.info(req.body);
+  log.info(name, country, city, postal);
+  db.updateLocation(userId, name, country, city, postal)
     .then(() => res.send().end())
     .catch(error => {
       log.info(error);
