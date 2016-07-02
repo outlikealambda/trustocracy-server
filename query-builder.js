@@ -169,13 +169,14 @@ const queryBuilder = {
   },
 
   topic: (topicId) => {
-    return `MATCH (t:Topic)
+    return `MATCH (t:Topic)<-[${rel.opinionTopic.addresses}]-(o:Opinion)<-[${rel.personOpinion.opines}]-(:Person)
             WHERE t.id = ${topicId}
-            RETURN t`;
+            RETURN t, count(o) as opinionCount`;
   },
 
   topics: () => {
-    return 'MATCH (t:Topic) RETURN t';
+    return `MATCH (t:Topic)<-[${rel.opinionTopic.addresses}]-(o:Opinion)<-[${rel.personOpinion.opines}]-(:Person)
+            RETURN t, count(o) as opinionCount`;
   },
 
   addDelegate: (userId, delegate) => {

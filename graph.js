@@ -294,9 +294,9 @@ const transformer = {
 
   opinionsByTopic : neoData => extractAllData(neoData, extractUserOpinion),
 
-  topic : extractFirstResult,
+  topic : neoData => extractFirstData(neoData, extractTopic),
 
-  topics : extractFirstResults,
+  topics : neoData => extractAllData(neoData, extractTopic),
 
   connected : neoData => extractAllData(neoData, row => {
     const
@@ -415,11 +415,6 @@ function extractFirstResult(neoData) {
   return extractFirstData(neoData, row => row[0], {});
 }
 
-// pulls out the first item from each row of results
-function extractFirstResults(neoData) {
-  return extractAllData(neoData, row => row[0], []);
-}
-
 // null checks a couple of places in the results data
 // see @extractAllData for the neo4j data structure
 function noResults(neoData) {
@@ -450,6 +445,17 @@ function extractUserOpinion(row) {
     { qualifications }
   );
 }
+
+function extractTopic(row) {
+  const [topic, opinionCount] = row;
+
+  return Object.assign(
+    {},
+    topic,
+    { opinionCount }
+  );
+}
+
 
 
 function getUniqueStartFinishCombos(scoredPaths) {
