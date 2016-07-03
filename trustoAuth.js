@@ -1,5 +1,5 @@
 const
-  db = require('./graph'),
+  db = require('./db/graph/graph'),
   bb = require('bluebird'),
   log = require('./logger'),
   jwt = require('jsonwebtoken'),

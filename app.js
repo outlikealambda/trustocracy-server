@@ -6,9 +6,9 @@ const
   bodyParser = require('body-parser'),
   cookieParser = require('cookie-parser'),
 
-  idGenerator = require('./id-generator'),
+  idGenerator = require('./db/graph/id-generator'),
   frontend = require('./frontend'),
-  db = require('./graph'),
+  db = require('./db/graph/graph'),
   log = require('./logger'),
 
   // init first for env variables

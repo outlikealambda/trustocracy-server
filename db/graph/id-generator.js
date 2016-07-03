@@ -1,7 +1,7 @@
 const
   join = require('bluebird').join,
   cq = require('./cypher-query'),
-  log = require('./logger'),
+  log = require('../../logger'),
   current = {
     opinion: 0,
     user: 0,

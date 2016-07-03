@@ -5,7 +5,7 @@ const
   cq = require('./cypher-query'),
   qb = require('./query-builder'),
   idGenerator = require('./id-generator'),
-  log = require('./logger'),
+  log = require('../../logger'),
   models = require('./models'),
   _ = require('lodash');
 

@@ -1,6 +1,6 @@
 var
   rp = require('request-promise'),
-  log = require('./logger'),
+  log = require('../../logger'),
   options = {
     auth: { username: 'neo4j', password: 'graphdb'}
   };
