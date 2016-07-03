@@ -12,6 +12,7 @@
     "jade": "~1.6.0",
     "jsonwebtoken": "^5.7.0",
     "lodash": "^4.11.1",
+    "massive": "^2.3.0",
     "mongoose": "~3.8.x",
     "morgan": "~1.3.0",
     "passport": "0.2.x",
