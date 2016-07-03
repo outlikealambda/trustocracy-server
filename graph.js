@@ -447,12 +447,15 @@ function extractUserOpinion(row) {
 }
 
 function extractTopic(row) {
-  const [topic, opinionCount] = row;
+  const [topic, opinionCount, lastUpdated] = row;
 
   return Object.assign(
     {},
     topic,
-    { opinionCount }
+    {
+      opinionCount,
+      lastUpdated
+    }
   );
 }
 
