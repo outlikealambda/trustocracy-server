@@ -317,7 +317,7 @@ const transformer = {
 
   emails : neoData => extractAllData(neoData, row => row[0].email),
 
-  location : neoData => extractAllData(neoData, extractUserLocation),
+  location : neoData => extractFirstData(neoData, extractUserLocation),
 
   opinion : neoData => extractFirstData(neoData, extractUserOpinion),
 
