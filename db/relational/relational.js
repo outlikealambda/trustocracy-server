@@ -1,7 +1,7 @@
-
 const
   connectionString = 'postgres://wr:@localhost/trusto',
-  logger = require('../../logger'),
+  // logger = require('../../logger'),
+  humps = require('humps'),
   pgp = require('pg-promise')(),
   db = pgp(connectionString),
   query = require('./query');
@@ -10,10 +10,16 @@ const
 function getQuestions(topicId) {
   return db
     .any(query.questions, {topicId})
-    .then(res => logger.info(res));
+    .then(humps.camelizeKeys);
 }
 
+function getPickOneQuestions(topicId) {
+  return db
+    .any(query.pickOneQuestions, {topicId})
+    .then(humps.camelizeKeys);
+}
 
 module.exports = {
-  getQuestions
+  getQuestions,
+  getPickOneQuestions
 };

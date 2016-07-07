@@ -60,7 +60,7 @@ app.get('/api/opinions/:ids', (req, res) => {
 
 // returns all opinions for a given :topicId
 app.get('/api/topic/:topicId/opinion', (req, res) => {
-  const topicId = req.params.topicId;
+  const {topicId} = req.params;
 
   gdb.getOpinionsByTopic(topicId)
     .then(opinions => res.send(opinions).end());
@@ -74,11 +74,20 @@ app.get('/api/topic/:topicId', (req, res) => {
     .then(topic => res.send(topic).end());
 });
 
+// return a list of all questions for a topic
 app.get('/api/topic/:topicId/question', (req, res) => {
   const {topicId} = req.params;
 
   rdb.getQuestions(topicId)
-    .then(() => res.end('fin'));
+    .then(data => res.send(data).end());
+});
+
+// return a list of multiple choice questions for a topic
+app.get('/api/topic/:topicId/question/pickone', (req, res) => {
+  const {topicId} = req.params;
+
+  rdb.getPickOneQuestions(topicId)
+    .then(data => res.send(data).end());
 });
 
 // return a list of all topics

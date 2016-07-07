@@ -8,6 +8,8 @@ const
       id serial PRIMARY KEY,
       type varchar(20),
       label varchar(20),
+      prompt text,
+      prompt_short varchar(140),
       options jsonb NOT NULL
     )`,
   answer =
