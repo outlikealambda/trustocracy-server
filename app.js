@@ -286,7 +286,10 @@ app.post('/api/:userId/updateLocation', (req,res) =>{
   log.info(req.body);
   log.info(name, country, city, postal);
   db.updateLocation(userId, name, country, city, postal)
-    .then(() => res.send().end())
+    .then(updateLocation => {
+      log.info(updateLocation);
+      res.send(updateLocation).end();
+    })
     .catch(error => {
       log.info(error);
       res.status(500).end('server error!');

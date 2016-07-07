@@ -272,7 +272,8 @@ function updateLocation(userId, locationName, country, city, postal) {
   const
     newLocationId = idGenerator.nextLocationId();
   return cq.query(qb.removeLocation(userId))
-    .then(() => cq.query(qb.addFullLocationToUser(userId, newLocationId, locationName, country, city, postal)));
+    .then(() => cq.query(qb.addFullLocationToUser(userId, newLocationId, locationName, country, city, postal)))
+    .then(() => ({name: locationName, id: newLocationId, country, city, postal}));
 }
 
 const transformer = {
