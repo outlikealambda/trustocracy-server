@@ -282,15 +282,15 @@ app.delete('/api/:locationId/deleteLocation', (req,res) =>{
 });
 
 //UPDATE LOCATION
-app.post('/api/:userId/updateLocation', (req,res) =>{
-  const {name, country, city, postal} = req.body,
+app.post('/api/:locationId/:userId/updateLocation', (req,res) =>{
+  const {locationName, country, city, postal} = req.body,
+    locationId = req.params.locationId,
     userId = req.params.userId;
 
-  log.info(req.body);
-  log.info(name, country, city, postal);
-  db.updateLocation(userId, name, country, city, postal)
+  log.info('app.js pre', locationId, userId, req.body);
+  db.updateLocation(locationId, userId, locationName, country, city, postal)
     .then(updateLocation => {
-      log.info(updateLocation);
+      log.info('app.js post', updateLocation);
       res.send(updateLocation).end();
     })
     .catch(error => {

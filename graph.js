@@ -261,7 +261,7 @@ a user to location relationship is created
 function connectUserToLocation(userId, locationName, country, city, postal) {
   const
     locationId = idGenerator.nextLocationId();
-  log.info('graph.js', locationName, country, city, postal);
+  log.info('graph.js locationName:', locationName, country, city, postal);
   return cq.query(qb.connectUserToLocation(userId, locationId, locationName, country, city, postal));
 }
 
@@ -269,12 +269,16 @@ function removeLocation(locationId) {
   return cq.query(qb.removeLocation(locationId));
 }
 
-function updateLocation(userId, locationName, country, city, postal) {
+function updateLocation(locationId, userId, locationName, country, city, postal) {
   const
     newLocationId = idGenerator.nextLocationId();
-  return cq.query(qb.removeLocation(userId))
-    .then(() => cq.query(qb.addFullLocationToUser(userId, newLocationId, locationName, country, city, postal)))
-    .then(() => ({name: locationName, id: newLocationId, country, city, postal}));
+
+  return cq.query(qb.removeLocation(locationId))
+    .then(() => cq.query(qb.connectUserToLocation(userId, newLocationId, locationName, country, city, postal)))
+    .then(() => {
+      log.info('graphs.js', locationName);
+      ({name: locationName, locationId: newLocationId, country, city, postal});
+    });
 }
 
 const transformer = {
