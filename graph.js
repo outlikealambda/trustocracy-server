@@ -183,7 +183,7 @@ function saveOpinion(userId, topicId, qualifiedOpinion) {
 }
 
 //gets location by user id
-function getLocationById(userId) {
+function getLocationByUserId(userId) {
   return cq.query(qb.locationByUserId(userId))
     .then(transformer.location);
 }
@@ -261,11 +261,12 @@ a user to location relationship is created
 function connectUserToLocation(userId, locationName, country, city, postal) {
   const
     locationId = idGenerator.nextLocationId();
-  return cq.query(qb.addFullLocationToUser(userId, locationId, locationName, country, city, postal));
+  log.info('graph.js', locationName, country, city, postal);
+  return cq.query(qb.connectUserToLocation(userId, locationId, locationName, country, city, postal));
 }
 
-function removeLocation(userId) {
-  return cq.query(qb.removeLocation(userId));
+function removeLocation(locationId) {
+  return cq.query(qb.removeLocation(locationId));
 }
 
 function updateLocation(userId, locationName, country, city, postal) {
@@ -318,7 +319,7 @@ const transformer = {
 
   emails : neoData => extractAllData(neoData, row => row[0].email),
 
-  location : neoData => extractFirstData(neoData, extractUserLocation),
+  location : neoData => extractAllData(neoData, extractUserLocation),
 
   opinion : neoData => extractFirstData(neoData, extractUserOpinion),
 
@@ -531,7 +532,7 @@ module.exports = {
   createUserWithGoogleId,
   getNearestOpinions,
   getConnectedOpinions,
-  getLocationById,
+  getLocationByUserId,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,

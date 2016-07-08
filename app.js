@@ -204,7 +204,7 @@ app.get('/favicon.ico', (req, res) => {
   res.end();
 });
 
-//get user location and other shit
+//get user, emails and locations
 app.get('/api/:userId', function(req, res) {
   const
     userId = req.params.userId;
@@ -246,18 +246,21 @@ app.get('/api/secure/user', function(req, res) {
 app.get('/api/:userId/getLocation', (req,res) => {
   const
     userId = req.params.userId;
-  log.info(userId);
-  db.getLocationById(userId)
-    .then(location => res.send(location).end());
+  db.getLocationByUserId(userId)
+    .then(location => {
+      log.info(location);
+      res.send(location).end();
+    });
+    //.then((location) => log.info('app.js', location));
 });
 
 //creates relationships between user and location components
 //POST LOCATION
 app.post('/api/:userId/postLocation', (req,res) => {
-  const {name, country, city, postal} = req.body,
+  const {locationName, country, city, postal} = req.body,
     userId = req.params.userId;
-
-  db.connectUserToLocation(userId, name, country, city, postal)
+  log.info('app.js' ,req.body);
+  db.connectUserToLocation(userId, locationName, country, city, postal)
     .then(() => res.send(req.body).end())
     .catch(error => {
       log.info(error);
@@ -266,11 +269,11 @@ app.post('/api/:userId/postLocation', (req,res) => {
 });
 
 //DELETE LOCATION
-app.delete('/api/:userId/deleteLocation', (req,res) =>{
+app.delete('/api/:locationId/deleteLocation', (req,res) =>{
   const
-    userId = req.params.userId;
+    locationId = req.params.locationId;
 
-  db.removeLocation(userId)
+  db.removeLocation(locationId)
     .then(() => res.send().end())
     .catch(error => {
       log.info(error);

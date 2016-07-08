@@ -20,15 +20,15 @@ const queryBuilder = {
 
   userInfo2: id => {
     return `MATCH (u:Person)-[${rel.personEmail.hasEmail}]->(e:Email)
+            OPTINAL MATCH (u:Person)-[${rel.personLocation.constituentOf}]->(l:Location)
             WHERE u.id = ${id}
-            WITH u, collect(e.email) as emails
-            OPTIONAL MATCH (u)-->(l:Location)
+            WITH u, collect(e.email) as emails, collect l as locations
             OPTIONAL MATCH (l)-->(co:Country)
             OPTIONAL MATCH (l)-->(ci:City)
             OPTIONAL MATCH (l)-->(po:Postal)
             RETURN u as user
                   ,emails
-                  ,l as location
+                  ,locations
                   ,co as country
                   ,ci as city
                   ,po as postal`;
@@ -70,54 +70,25 @@ const queryBuilder = {
   CONSTITUENT_OF
   POSTAL
   CITY
-  and country
+  COUNTRY
   */
-  addFullLocationToUser: (userId, locationId, locationName, country, city, postal) => {
+  connectUserToLocation: (userId, locationId, name, country, city, postal) => {
     return `MERGE (co:Country {name:"${country}"})
             MERGE (ci:City {name:"${city}"})
             MERGE (po:Postal {name:"${postal}"})
             WITH co, ci, po
             MATCH (p:Person {id : ${userId}})
-            MERGE (p)-[${rel.personLocation.constituentOf}]->(l:Location {id: ${locationId}, name: "${locationName}"})
+            CREATE (p)-[${rel.personLocation.constituentOf}]->(l:Location {id: ${locationId}, name: "${name}"})
             MERGE (l)-[${rel.locationRel.country}]->(co)
             MERGE (l)-[${rel.locationRel.city}]->(ci)
             MERGE (l)-[${rel.locationRel.postalCode}]->(po)`;
   },
 
-  addLocationToUser: (userId, location) => {
-    return `Match (p:Person)
-            WHERE p.id = ${userId}
-            MERGE (p)-[${rel.personLocation.constituentOf}]->(l:Location {name: "${location}"}`;
-  },
-
-  //this method creates a relationship
-  //POSTAL from location to postal code
-  addPostalToLocation: (locationId, postal) => {
-    return `Match (l:Location)
-            WHERE l.id = ${locationId}
-            MERGE (l)-[${rel.locationRel.postalCode}]->(po:Postal {name:"${postal}"})`;
-  },
-
-  //this method creates a relationship
-  //CITY from location to city
-  addCityToLocation: (locationId, city) => {
-    return `Match (l:Location)
-            WHERE l.id = ${locationId}
-            MERGE (l)-[${rel.locationRel.city}]->(ci:City {name:"${city}"})`;
-  },
-
-  //this method creates a relationship
-  //COUNTRY from location to country
-  addCountryToLocation: (locationId, country) => {
-    return `Match (l:Location)
-            WHERE l.id = ${locationId}
-            MERGE (l)-[${rel.locationRel.country}]->(co:Country {name:"${country}"})`;
-  },
 
   //this method removes a location node and all of its relationships
-  removeLocation: (userId) => {
-    return `MATCH (p:Person)-[cf:CONSTITUENT_OF]->(l:Location)
-            WHERE p.id =${userId}
+  removeLocation: (locationId) => {
+    return `MATCH (l:Location)<-[cf:CONSTITUENT_OF]-(p:Person)
+            WHERE l.id =${locationId}
             DELETE cf
             WITH l
             MATCH (l:Location)-[po:POSTAL]->(:Postal)
