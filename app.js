@@ -335,9 +335,10 @@ app.get('/api/secure/topic/:topicId/opinion', function(req, res) {
   gdb.getOpinionByUserTopic(userId, topicId)
     .then(log.promise('user opinion'))
     .then(opinion => {
-      if (opinion.id === -1) {
+      if (!opinion.id) {
         return gdb.getUser(userId)
           .then(user => {
+            // attach self as author
             const author = Object.assign(
               {},
               user,
@@ -377,6 +378,41 @@ app.post('/api/secure/topic/:topicId/opinion/save', function(req, res) {
 
   gdb.saveOpinion(userId, topicId, opinion)
     .then(saved => res.send(saved).end());
+});
+
+app.get('/api/secure/topic/:topicId/opinion/:opinionId/answer', (req, res) => {
+  const
+    {topicId, opinionId} = req.params,
+    userId = req.userId;
+
+  rdb.answer.byUser(topicId, opinionId, userId)
+    .then(data => res.send(data).end());
+});
+
+app.post('/api/secure/topic/:topicId/opinion/:opinionId/question/:questionId/answer', (req, res) => {
+  const
+    {topicId, opinionId, questionId} = req.params,
+    userId = req.userId,
+    {pickOne, assess} = req.body;
+
+  rdb.answer.create(topicId, opinionId, userId, questionId, pickOne, assess)
+    .then(answerId => res.send(answerId).end());
+});
+
+app.post('/api/secure/answer/:answerId', (req, res) => {
+  const
+    {answerId} = req.params,
+    {pickOne, assess} = req.body;
+
+  rdb.answer.update(answerId, pickOne, assess)
+    .then(answerId => res.send(answerId).end());
+});
+
+app.delete('/api/secure/answer/:answerId', (req, res) => {
+  const {answerId} = req.params;
+
+  rdb.answer.delete(answerId)
+    .then(() => res.send('success!').end());
 });
 
 app.post('/api/secure/delegate', function(req, res) {

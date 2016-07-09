@@ -38,54 +38,82 @@ const
   //     ]
   //   }
   // },
+  respectful = {
+    type: 'ASSESS',
+    label: 'STANDARD',
+    prompt: 'How would you characterize the tone of this opinion?',
+    prompt_short: 'Aggressive or Calm?',
+    options: {
+      endpoints: [
+        {
+          id : 0,
+          label : 'Whoa, chill out!'
+        },
+        {
+          id: 1,
+          label: 'Zzzzzzzzz'
+        }
+      ]
+    }
+  },
+
   balanced = {
     type: 'ASSESS',
     label: 'STANDARD',
-    prompt: 'Is this opinion focused on a single aspect of the issue, or does it encompass a broad survey of many possible impacts?',
-    prompt_short: 'Focused or Balanced?',
+    prompt: 'How does this opinion state its argument?',
+    prompt_short: 'Offense or Defense?',
     options: {
       endpoints: [
         {
           id : 0,
-          label : 'Super Focused'
+          label : 'I am right!'
         },
         {
           id: 1,
-          label: 'Very Broad'
-        }
-      ],
-      sliders: [
-        {
-          id : 0,
-          label : ''
+          label: 'You are wrong!'
         }
       ]
     }
   },
-  leaning = {
+
+  facts = {
     type: 'ASSESS',
     label: 'STANDARD',
-    prompt: 'Do you agree or disagree with the arguments of this opinion?',
-    prompt_short: '+/- ?',
+    prompt: 'How thorough was this opinion?',
+    prompt_short: 'Length',
     options: {
       endpoints: [
         {
           id : 0,
-          label : 'Agree'
+          label : 'Post-it note'
         },
         {
           id: 1,
-          label: 'Disagree'
-        }
-      ],
-      sliders: [
-        {
-          id : 0,
-          label : ''
+          label: 'Phone book'
         }
       ]
     }
   },
+
+  complexity = {
+    type: 'ASSESS',
+    label: 'STANDARD',
+    prompt: '',
+    prompt_short: 'Complex or Basic',
+    options: {
+      endpoints: [
+        {
+          id: 0,
+          label: 'Green Eggs and Ham'
+        },
+        {
+          id: 1,
+          label: 'Rocket Science 301'
+        }
+      ]
+    }
+  },
+
   learn = {
     type: 'PICK_ONE',
     label: 'STANDARD',
@@ -104,6 +132,7 @@ const
       ]
     }
   },
+
   changeYourMind = {
     type: 'PICK_ONE',
     label: 'STANDARD',
@@ -130,6 +159,7 @@ const
       ]
     }
   },
+
   warmAndFuzzy = {
     type: 'PICK_ONE',
     label: 'STANDARD',
@@ -152,7 +182,7 @@ const
       ]
     }
   },
-  standard = [balanced, leaning, learn, changeYourMind, warmAndFuzzy],
+  standard = [respectful, balanced, facts, complexity, learn, changeYourMind, warmAndFuzzy],
   topics = [0,1,2,3,4,5,6,7,8];
 
 

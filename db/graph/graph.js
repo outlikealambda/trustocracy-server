@@ -152,16 +152,20 @@ function getTrusteeByEmail(email) {
 // 2. mark the new draft as published
 //
 // we don't transform the result because we don't use it
-function publishOpinion(userId, topicId, opinionId) {
-  return cq.query(qb.unpublishOpinion(userId, topicId))
-    .then(cq.query(qb.publishOpinion(opinionId)));
+function publishOpinion(draftId, opinionId) {
+  return cq.query(qb.unpublishOpinion(opinionId))
+    .then(() => cq.query(qb.publishOpinion(draftId)));
 }
 
 function saveOpinion(userId, topicId, qualifiedOpinion) {
   const
     // split up the qualified opinion for the graphDb
+
+    // always increment the draftId;
+    // reuse the opinionId if it's there;
     opinion = {
-      id : idGenerator.nextOpinionId(),
+      id : qualifiedOpinion.id || idGenerator.nextOpinionId(),
+      draftId : idGenerator.nextDraftId(),
       text : qualifiedOpinion.text,
       influence : 0
     },
@@ -533,9 +537,9 @@ module.exports = {
   // 3. return that opinion
   publishOpinion : function (userId, topicId, qualifiedOpinion) {
     return saveOpinion(userId, topicId, qualifiedOpinion)
-      .then(draft => {
-        return publishOpinion(userId, topicId, draft.id)
-          .then(() => draft);
+      .then(newDraft => {
+        return publishOpinion(newDraft.draftId, newDraft.opinionId)
+          .then(() => newDraft);
       });
   },
 

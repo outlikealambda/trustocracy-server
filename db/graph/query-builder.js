@@ -107,21 +107,6 @@ const queryBuilder = {
             LIMIT 1`;
   },
 
-  // actual opinion and qualifications are passed as params
-  // via queryWithParams
-  createOpinion: (userId, topicId) => {
-    return `MATCH (p:Person), (t:Topic)
-            WHERE p.id=${userId} AND t.id=${topicId}
-            CREATE
-              (p)-[${rel.personOpinion.thinks}]->(o:Opinion)-[${rel.opinionTopic.addresses}]->(t),
-              (q:Qualifications)-[:QUALIFIES]->(o)
-            SET
-              o = { opinion },
-              o.created = timestamp(),
-              q = { qualifications }
-            RETURN o, p, q`;
-  },
-
   // set details with queryWithParams + { person }
   createUser: () => {
     return `CREATE (p:Person)
@@ -155,16 +140,31 @@ const queryBuilder = {
             CREATE (u)-[${rel.personEmail.hasEmail}]->(e:Email {email:'${email}'})`;
   },
 
-  publishOpinion: opinionId => {
-    return `MATCH (p:Person)-[${rel.personOpinion.thinks}]->(o:Opinion)
-            WHERE o.id=${opinionId}
-            CREATE (p)-[${rel.personOpinion.opines}]->(o)
-            RETURN o.id`;
+  // actual opinion and qualifications are passed as params
+  // via queryWithParams
+  createOpinion: (userId, topicId) => {
+    return `MATCH (p:Person), (t:Topic)
+            WHERE p.id=${userId} AND t.id=${topicId}
+            CREATE
+              (p)-[${rel.personOpinion.thinks}]->(o:Opinion)-[${rel.opinionTopic.addresses}]->(t),
+              (q:Qualifications)-[:QUALIFIES]->(o)
+            SET
+              o = { opinion },
+              o.created = timestamp(),
+              q = { qualifications }
+            RETURN o, p, q`;
   },
 
-  unpublishOpinion: (userId, topicId) => {
-    return `MATCH (p:Person)-[r${rel.personOpinion.opines}]->(:Opinion)-->(t:Topic)
-            WHERE p.id=${userId} AND t.id=${topicId}
+  publishOpinion: draftId => {
+    return `MATCH (p:Person), (o:Opinion)
+            WHERE o.draftId=${draftId}
+            CREATE (p)-[${rel.personOpinion.opines}]->(o)
+            RETURN o.draftId`;
+  },
+
+  unpublishOpinion: opinionId => {
+    return `MATCH (:Person)-[r${rel.personOpinion.opines}]->(o:Opinion)
+            WHERE o.id=${opinionId}
             DELETE r`;
   },
 

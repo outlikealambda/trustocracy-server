@@ -4,17 +4,27 @@ const
   log = require('../../logger'),
   current = {
     opinion: 0,
+    draft: 0,
     user: 0,
     topic: 0
   };
 
 function init() {
-  return join(getOpinionMax(), getUserMax(), getTopicMax())
+  return join(
+      getOpinionMax(),
+      getDraftMax(),
+      getUserMax(),
+      getTopicMax()
+    )
     .then(log.promise('id generator initial values'));
 }
 
 function nextOpinionId() {
   return current.opinion += 1;
+}
+
+function nextDraftId() {
+  return current.draft += 1;
 }
 
 function nextUserId() {
@@ -34,6 +44,12 @@ function getOpinionMax() {
   return cq.query(createMaxValueQuery('Opinion', 'id'))
     .then(extractMax)
     .then(maxVal => current.opinion = maxVal);
+}
+
+function getDraftMax() {
+  return cq.query(createMaxValueQuery('Opinion', 'draftId'))
+    .then(extractMax)
+    .then(maxVal => current.draft = maxVal);
 }
 
 function getUserMax() {
@@ -57,6 +73,7 @@ function extractMax(neoData) {
 module.exports = {
   init,
   nextOpinionId,
+  nextDraftId,
   nextUserId,
   nextTopicId
 };

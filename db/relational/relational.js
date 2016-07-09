@@ -19,7 +19,26 @@ function getPickOneQuestions(topicId) {
     .then(humps.camelizeKeys);
 }
 
+const answer = {
+
+  create : (topicId, opinionId, userId, questionId, pickOne, assess) =>
+    db.one(query.answer.create, {topicId, opinionId, userId, questionId, pickOne, assess}),
+
+  update : (answerId, pickOne, assess) =>
+    db.one(query.answer.update, {answerId, pickOne, assess})
+      .then(() => answerId),
+
+  remove : answerId =>
+    db.any(query.answer.remove, {answerId}),
+
+  byUser : (topicId, opinionId, userId) =>
+    db.any(query.answer.byUser, {topicId, opinionId, userId})
+      .then(humps.camelizeKeys)
+
+};
+
 module.exports = {
+  answer,
   getQuestions,
   getPickOneQuestions
 };
