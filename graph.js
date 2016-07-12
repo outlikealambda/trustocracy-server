@@ -19,8 +19,21 @@ function validateUser(id, saltedSecret) {
 function getUserInfo(id) {
   return cq.query(qb.userInfo(id)).then(transformer.userInfo);
 }
+
 function getUserInfo2(id) {
-  return cq.query(qb.userInfo2(id)).then(transformer.userInfo2);
+  return cq.query(qb.userInfo2(id))
+    .then(transformer.userInfo2)
+    .then(userInfo => {
+      log.info('graph.js basicUser', userInfo);
+      return cq.query(qb.locationByUserId(id))
+        .then(transformer.location)
+        .then(locations => {
+          log.info('graph.js locations', locations);
+          userInfo.location = locations;
+          log.info('graph.js basicUser w/ location', userInfo);
+          return userInfo;
+        });
+    });
 }
 
 function getUser(id) {
@@ -261,7 +274,7 @@ a user to location relationship is created
 function connectUserToLocation(userId, locationName, country, city, postal) {
   const
     locationId = idGenerator.nextLocationId();
-  log.info('graph.js locationName:', locationName, country, city, postal);
+  //log.info('graph.js locationName:', locationName, country, city, postal);
   return cq.query(qb.connectUserToLocation(userId, locationId, locationName, country, city, postal));
 }
 
@@ -275,10 +288,7 @@ function updateLocation(locationId, userId, locationName, country, city, postal)
 
   return cq.query(qb.removeLocation(locationId))
     .then(() => cq.query(qb.connectUserToLocation(userId, newLocationId, locationName, country, city, postal)))
-    .then(() => {
-      log.info('graphs.js', locationName);
-      ({name: locationName, locationId: newLocationId, country, city, postal});
-    });
+    .then(() => ({name: locationName, locationId: newLocationId, country, city, postal}));
 }
 
 const transformer = {
@@ -452,26 +462,17 @@ function noResults(neoData) {
   return false;
 }
 function extractFullUser(row){
-  const [user, emails, location, country, city, postal] = row;
-  let locay = {};
+  const [user, emails] = row;
+  log.info('graph.js eFU row', row);
 
-  if (location){
-    locay ={
-      name: location.name,
-      id: location.id,
-      country: country.name,
-      city: city.name,
-      postal: postal.name
-    };
-  }
   return(
     { name: user.name,
       id: user.id,
-      emails: emails,
-      location: locay
+      emails: emails
     }
   );
 }
+
 function extractUserLocation(row) {
   const [location, country, city, postal] = row;
 

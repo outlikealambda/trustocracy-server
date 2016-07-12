@@ -20,18 +20,9 @@ const queryBuilder = {
 
   userInfo2: id => {
     return `MATCH (u:Person)-[${rel.personEmail.hasEmail}]->(e:Email)
-            OPTINAL MATCH (u:Person)-[${rel.personLocation.constituentOf}]->(l:Location)
             WHERE u.id = ${id}
-            WITH u, collect(e.email) as emails, collect l as locations
-            OPTIONAL MATCH (l)-->(co:Country)
-            OPTIONAL MATCH (l)-->(ci:City)
-            OPTIONAL MATCH (l)-->(po:Postal)
-            RETURN u as user
-                  ,emails
-                  ,locations
-                  ,co as country
-                  ,ci as city
-                  ,po as postal`;
+            WITH u as user, collect(e.email) as emails
+            RETURN user, emails`;
   },
 
   userByEmail: email => {

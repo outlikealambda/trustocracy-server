@@ -211,7 +211,7 @@ app.get('/api/:userId', function(req, res) {
 
   db.getUserInfo2(userId)
     .then(userInfo => {
-      log.info(userInfo);
+      log.info('app.js returned userInfo', userInfo);
       res.send(userInfo).end();
     })
     .catch(error => {
@@ -287,10 +287,10 @@ app.post('/api/:locationId/:userId/updateLocation', (req,res) =>{
     locationId = req.params.locationId,
     userId = req.params.userId;
 
-  log.info('app.js pre', locationId, userId, req.body);
+  //log.info('app.js pre', locationId, userId, req.body);
   db.updateLocation(locationId, userId, locationName, country, city, postal)
     .then(updateLocation => {
-      log.info('app.js post', updateLocation);
+      //log.info('app.js post', updateLocation);
       res.send(updateLocation).end();
     })
     .catch(error => {
