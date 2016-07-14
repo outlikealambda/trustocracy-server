@@ -271,11 +271,11 @@ and number:
 postal
 a user to location relationship is created
 */
-function connectUserToLocation(userId, locationName, country, city, postal) {
+function connectUserToLocation(userId, name, country, city, postal) {
   const
     locationId = idGenerator.nextLocationId();
   //log.info('graph.js locationName:', locationName, country, city, postal);
-  return cq.query(qb.connectUserToLocation(userId, locationId, locationName, country, city, postal));
+  return cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal));
 }
 
 function removeLocation(locationId) {

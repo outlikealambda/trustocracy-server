@@ -257,10 +257,10 @@ app.get('/api/:userId/getLocation', (req,res) => {
 //creates relationships between user and location components
 //POST LOCATION
 app.post('/api/:userId/postLocation', (req,res) => {
-  const {locationName, country, city, postal} = req.body,
+  const {name, country, city, postal} = req.body,
     userId = req.params.userId;
   log.info('app.js' ,req.body);
-  db.connectUserToLocation(userId, locationName, country, city, postal)
+  db.connectUserToLocation(userId, name, country, city, postal)
     .then(() => res.send(req.body).end())
     .catch(error => {
       log.info(error);
