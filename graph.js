@@ -201,6 +201,11 @@ function getLocationByUserId(userId) {
     .then(transformer.location);
 }
 
+function getUserByLocation(locationId) {
+  return cq.query(qb.userByLocation(locationId))
+    .then(transformer.basicUser);
+}
+
 function getOpinionById(opinionId) {
   return cq.query(qb.opinionById(opinionId))
     .then(transformer.opinion);
@@ -274,7 +279,7 @@ a user to location relationship is created
 function connectUserToLocation(userId, name, country, city, postal) {
   const
     locationId = idGenerator.nextLocationId();
-  //log.info('graph.js locationName:', locationName, country, city, postal);
+  log.info('graph.js location name:', name, country, city, postal);
   return cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal));
 }
 
@@ -282,13 +287,22 @@ function removeLocation(locationId) {
   return cq.query(qb.removeLocation(locationId));
 }
 
-function updateLocation(locationId, userId, locationName, country, city, postal) {
+function updateLocation(locationId, name, country, city, postal) {
   const
     newLocationId = idGenerator.nextLocationId();
 
-  return cq.query(qb.removeLocation(locationId))
-    .then(() => cq.query(qb.connectUserToLocation(userId, newLocationId, locationName, country, city, postal)))
-    .then(() => ({name: locationName, locationId: newLocationId, country, city, postal}));
+  return cq.query(qb.userByLocation(locationId))
+    .then(transformer.basicUser)
+    .then(result => {
+      cq.query(qb.removeLocation(locationId));
+      log.info('graph.js basicUser: ', result);
+      return result.id;})
+    .then(userId => {
+      log.info('graph.js userId post remove',userId);
+      log.info('graph.js location name post remove', name);
+      cq.query(qb.connectUserToLocation(userId, newLocationId, name, country, city, postal));
+    })
+    .then(() => ({name, locationId: newLocationId, country, city, postal}));
 }
 
 const transformer = {
@@ -328,6 +342,8 @@ const transformer = {
       emails : emails
     };
   }),
+
+  basicUser : neoData => extractFirstData(neoData, extractUser),
 
   userInfo2 : neoData => extractFirstData(neoData, extractFullUser),
 
@@ -473,6 +489,15 @@ function extractFullUser(row){
   );
 }
 
+function extractUser(row){
+  const [user] = row;
+
+  return(
+    {name: user.name,
+    id: user.id}
+  );
+}
+
 function extractUserLocation(row) {
   const [location, country, city, postal] = row;
 
@@ -538,6 +563,7 @@ module.exports = {
   getNearestOpinions,
   getConnectedOpinions,
   getLocationByUserId,
+  getUserByLocation,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,

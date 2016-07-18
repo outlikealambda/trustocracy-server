@@ -44,6 +44,13 @@ const queryBuilder = {
         .join(', ');
   },
 
+
+  //user by location
+  userByLocation : locationId => {
+    return `MATCH (z:Location {id: ${locationId}})<-[]-(p:Person)
+            RETURN p`;
+  },
+
   //parameters user id
   //returns [Locations: [Country, City, Postal]]
   locationByUserId : userId => {
@@ -63,13 +70,13 @@ const queryBuilder = {
   CITY
   COUNTRY
   */
-  connectUserToLocation: (userId, locationId, name, country, city, postal) => {
+  connectUserToLocation: (userId, locationId, locationName, country, city, postal) => {
     return `MERGE (co:Country {name:"${country}"})
             MERGE (ci:City {name:"${city}"})
             MERGE (po:Postal {name:"${postal}"})
             WITH co, ci, po
             MATCH (p:Person {id : ${userId}})
-            CREATE (p)-[${rel.personLocation.constituentOf}]->(l:Location {id: ${locationId}, name: "${name}"})
+            CREATE (p)-[${rel.personLocation.constituentOf}]->(l:Location {id: ${locationId}, name: "${locationName}"})
             MERGE (l)-[${rel.locationRel.country}]->(co)
             MERGE (l)-[${rel.locationRel.city}]->(ci)
             MERGE (l)-[${rel.locationRel.postalCode}]->(po)`;

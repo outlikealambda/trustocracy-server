@@ -241,6 +241,16 @@ app.get('/api/secure/user', function(req, res) {
     });
 });
 
+app.get('/api/user/:locationId', (req,res) => {
+  const
+    locationId = req.params.locationId;
+  db.getUserByLocation(locationId)
+    .then(user => {
+      log.info(user);
+      res.send(user).end();
+    });
+});
+
 //returns the location assosciated with the given user id
 //GET LOCATION
 app.get('/api/:userId/getLocation', (req,res) => {
@@ -259,9 +269,12 @@ app.get('/api/:userId/getLocation', (req,res) => {
 app.post('/api/:userId/postLocation', (req,res) => {
   const {name, country, city, postal} = req.body,
     userId = req.params.userId;
-  log.info('app.js' ,req.body);
+  log.info('app.js post location', req.body);
   db.connectUserToLocation(userId, name, country, city, postal)
-    .then(() => res.send(req.body).end())
+    .then(() => {
+      log.info('app.js post location after connect', name);
+      res.send(req.body).end();
+    })
     .catch(error => {
       log.info(error);
       res.status(500).end('server error!');
@@ -282,15 +295,14 @@ app.delete('/api/:locationId/deleteLocation', (req,res) =>{
 });
 
 //UPDATE LOCATION
-app.post('/api/:locationId/:userId/updateLocation', (req,res) =>{
-  const {locationName, country, city, postal} = req.body,
-    locationId = req.params.locationId,
-    userId = req.params.userId;
+app.post('/api/:locationId/updateLocation', (req,res) =>{
+  const {name, country, city, postal} = req.body,
+    locationId = req.params.locationId;
 
-  //log.info('app.js pre', locationId, userId, req.body);
-  db.updateLocation(locationId, userId, locationName, country, city, postal)
+  log.info('app.js pre', name, req.body);
+  db.updateLocation(locationId, name, country, city, postal)
     .then(updateLocation => {
-      //log.info('app.js post', updateLocation);
+      log.info('app.js post', updateLocation);
       res.send(updateLocation).end();
     })
     .catch(error => {
