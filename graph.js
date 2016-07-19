@@ -303,7 +303,7 @@ function updateLocation(locationId, name, country, city, postal) {
       log.info('graph.js location name post remove', name);
       cq.query(qb.connectUserToLocation(userId, newLocationId, name, country, city, postal));
     })
-    .then(() => ({name, locationId: newLocationId, country, city, postal}));
+    .then(() => ({name, id: newLocationId, country, city, postal}));
 }
 
 const transformer = {

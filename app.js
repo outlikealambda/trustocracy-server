@@ -205,7 +205,7 @@ app.get('/favicon.ico', (req, res) => {
 });
 
 //get user, emails and locations
-app.get('/api/:userId', function(req, res) {
+app.get('/api/users/:userId/info', function(req, res) {
   const
     userId = req.params.userId;
 
@@ -253,7 +253,7 @@ app.get('/api/user/:locationId', (req,res) => {
 
 //returns the location assosciated with the given user id
 //GET LOCATION
-app.get('/api/:userId/getLocation', (req,res) => {
+app.get('/api/secure/getLocation', (req,res) => {
   const
     userId = req.params.userId;
   db.getLocationByUserId(userId)
@@ -266,7 +266,7 @@ app.get('/api/:userId/getLocation', (req,res) => {
 
 //creates relationships between user and location components
 //POST LOCATION
-app.post('/api/:userId/postLocation', (req,res) => {
+app.post('/api/secure/postLocation', (req,res) => {
   const {name, country, city, postal} = req.body,
     userId = req.params.userId;
   log.info('app.js post location', req.body);
