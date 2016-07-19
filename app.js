@@ -255,7 +255,7 @@ app.get('/api/user/:locationId', (req,res) => {
 //GET LOCATION
 app.get('/api/secure/getLocation', (req,res) => {
   const
-    userId = req.params.userId;
+    userId = req.userId;
   db.getLocationByUserId(userId)
     .then(location => {
       log.info(location);
@@ -268,7 +268,7 @@ app.get('/api/secure/getLocation', (req,res) => {
 //POST LOCATION
 app.post('/api/secure/postLocation', (req,res) => {
   const {name, country, city, postal} = req.body,
-    userId = req.params.userId;
+    userId = req.userId;
   log.info('app.js post location', req.body);
   db.connectUserToLocation(userId, name, country, city, postal)
     .then(location => {
