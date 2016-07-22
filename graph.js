@@ -280,11 +280,13 @@ function connectUserToLocation(userId, name, country, city, postal) {
   const
     locationId = idGenerator.nextLocationId();
   log.info('graph.js location name:', name, country, city, postal);
-  return cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal));
+  return cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal))
+  .then(transformer.location);
 }
 
 function removeLocation(locationId) {
-  return cq.query(qb.removeLocation(locationId));
+  return cq.query(qb.removeLocation(locationId))
+    .then( val => log.info(val));
 }
 
 function updateLocation(locationId, name, country, city, postal) {
