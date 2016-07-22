@@ -79,8 +79,7 @@ const queryBuilder = {
             CREATE (p)-[${rel.personLocation.constituentOf}]->(l:Location {id: ${locationId}, name: "${locationName}"})
             MERGE (l)-[${rel.locationRel.country}]->(co)
             MERGE (l)-[${rel.locationRel.city}]->(ci)
-            MERGE (l)-[${rel.locationRel.postalCode}]->(po)
-            RETURN l, co, ci, po`;
+            MERGE (l)-[${rel.locationRel.postalCode}]->(po)`;
   },
 
 

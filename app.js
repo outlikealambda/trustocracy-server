@@ -271,9 +271,9 @@ app.post('/api/secure/postLocation', (req,res) => {
     userId = req.userId;
   log.info('app.js post location', req.body);
   db.connectUserToLocation(userId, name, country, city, postal)
-    .then(location => {
-      log.info('app.js post location after connect', location);
-      res.send(location).end();
+    .then(() => {
+      log.info('app.js post location after connect', name);
+      res.send(req.body).end();
     })
     .catch(error => {
       log.info(error);
@@ -287,7 +287,7 @@ app.delete('/api/:locationId/deleteLocation', (req,res) =>{
     locationId = req.params.locationId;
 
   db.removeLocation(locationId)
-    .then(() => res.send(locationId).end())
+    .then(() => res.send().end())
     .catch(error => {
       log.info(error);
       res.status(500).end('server error!');
