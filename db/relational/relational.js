@@ -15,18 +15,17 @@ function getQuestions(topicId) {
 
 function getPickOneQuestions(topicId) {
   return db
-    .any(query.pickOneQuestions, {topicId})
+    .any(query.pickQuestions, {topicId})
     .then(humps.camelizeKeys);
 }
 
 const answer = {
 
-  create : (topicId, opinionId, userId, questionId, pickOne, assess) =>
-    db.one(query.answer.create, {topicId, opinionId, userId, questionId, pickOne, assess}),
+  create : (topicId, opinionId, userId, questionId, picked, rated) =>
+    db.one(query.answer.create, {topicId, opinionId, userId, questionId, picked, rated}),
 
-  update : (answerId, pickOne, assess) =>
-    db.one(query.answer.update, {answerId, pickOne, assess})
-      .then(() => answerId),
+  update : (answerId, picked, rated) =>
+    db.one(query.answer.update, {answerId, picked, rated}),
 
   remove : answerId =>
     db.any(query.answer.remove, {answerId}),

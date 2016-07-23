@@ -386,33 +386,49 @@ app.get('/api/secure/topic/:topicId/opinion/:opinionId/answer', (req, res) => {
     userId = req.userId;
 
   rdb.answer.byUser(topicId, opinionId, userId)
-    .then(data => res.send(data).end());
+    .then(data => res.send(data).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
 });
 
 app.post('/api/secure/topic/:topicId/opinion/:opinionId/question/:questionId/answer', (req, res) => {
   const
     {topicId, opinionId, questionId} = req.params,
     userId = req.userId,
-    {pickOne, assess} = req.body;
+    {picked, rated} = req.body;
 
-  rdb.answer.create(topicId, opinionId, userId, questionId, pickOne, assess)
-    .then(answerId => res.send(answerId).end());
+  rdb.answer.create(topicId, opinionId, userId, questionId, picked, rated)
+    .then(answerId => res.send(answerId).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
 });
 
 app.post('/api/secure/answer/:answerId', (req, res) => {
   const
     {answerId} = req.params,
-    {pickOne, assess} = req.body;
+    {picked, rated} = req.body;
 
-  rdb.answer.update(answerId, pickOne, assess)
-    .then(answerId => res.send(answerId).end());
+  rdb.answer.update(answerId, picked, rated)
+    .then(answerId => res.send(answerId).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
 });
 
 app.delete('/api/secure/answer/:answerId', (req, res) => {
   const {answerId} = req.params;
 
   rdb.answer.delete(answerId)
-    .then(() => res.send('success!').end());
+    .then(() => res.send('success!').end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
 });
 
 app.post('/api/secure/delegate', function(req, res) {

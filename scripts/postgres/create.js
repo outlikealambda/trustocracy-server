@@ -19,9 +19,9 @@ const
       opinion_id int,
       user_id int,
       question_id int,
-      created date,
-      pick_one int,
-      assess double precision,
+      timestamp timestamptz default current_timestamp,
+      picked int,
+      rated double precision,
       FOREIGN KEY (question_id) REFERENCES question(id)
     )`,
   topicQuestion =

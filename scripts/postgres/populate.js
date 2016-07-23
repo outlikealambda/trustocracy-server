@@ -4,45 +4,13 @@ const
   db = require('pg-promise')()(connectionString);
 
 const
-  // ASSESS example
+  // RATE example
 
-  // cokePepsiSnapple = {
-  //   type: 'ASSESS',
-  //   label: 'STANDARD',
-  //   prompt: 'How delicious would you rate each of these?',
-  //   promptShort: 'Deliciousness?',
-  //   options: {
-  //     endpoints: [
-  //       {
-  //         id : 0,
-  //         label : 'Not delicious'
-  //       },
-  //       {
-  //         id: 1,
-  //         label: 'Delicious'
-  //       }
-  //     ],
-  //     sliders: [
-  //       {
-  //         id : 0,
-  //         label : 'Coke'
-  //       },
-  //       {
-  //         id : 1,
-  //         label : 'Pepsi'
-  //       },
-  //       {
-  //         id : 0,
-  //         label : 'Snapple'
-  //       }
-  //     ]
-  //   }
-  // },
   respectful = {
-    type: 'ASSESS',
+    type: 'RATE',
     label: 'STANDARD',
     prompt: 'How would you characterize the tone of this opinion?',
-    prompt_short: 'Aggressive or Calm?',
+    prompt_short: 'Aggressive or Calm',
     options: {
       endpoints: [
         {
@@ -58,10 +26,10 @@ const
   },
 
   balanced = {
-    type: 'ASSESS',
+    type: 'RATE',
     label: 'STANDARD',
     prompt: 'How does this opinion state its argument?',
-    prompt_short: 'Offense or Defense?',
+    prompt_short: 'Offense or Defense',
     options: {
       endpoints: [
         {
@@ -77,10 +45,10 @@ const
   },
 
   facts = {
-    type: 'ASSESS',
+    type: 'RATE',
     label: 'STANDARD',
     prompt: 'How thorough was this opinion?',
-    prompt_short: 'Length',
+    prompt_short: 'Detail Level',
     options: {
       endpoints: [
         {
@@ -96,9 +64,9 @@ const
   },
 
   complexity = {
-    type: 'ASSESS',
+    type: 'RATE',
     label: 'STANDARD',
-    prompt: '',
+    prompt: 'How challenging was it to understand this opinion?',
     prompt_short: 'Complex or Basic',
     options: {
       endpoints: [
@@ -108,14 +76,14 @@ const
         },
         {
           id: 1,
-          label: 'Rocket Science 301'
+          label: 'Rocket Science 303'
         }
       ]
     }
   },
 
   learn = {
-    type: 'PICK_ONE',
+    type: 'PICK',
     label: 'STANDARD',
     prompt: 'Does this opinion bring some fresh perspective?',
     prompt_short: 'Got Fresh?',
@@ -134,7 +102,7 @@ const
   },
 
   changeYourMind = {
-    type: 'PICK_ONE',
+    type: 'PICK',
     label: 'STANDARD',
     prompt: 'Did this opinion change your perspective on the issue?',
     prompt_short: 'Change Your Mind?',
@@ -161,7 +129,7 @@ const
   },
 
   warmAndFuzzy = {
-    type: 'PICK_ONE',
+    type: 'PICK',
     label: 'STANDARD',
     prompt: 'Does this make you feel warm and fuzzy?',
     prompt_short: 'Warm and Fuzzy?',
