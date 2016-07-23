@@ -329,7 +329,7 @@ const transformer = {
   connectedPlugin : neoData => extractAllData(neoData, row => {
     const
       [unscoredPaths, opinion] = row,
-      paths = unscoredPaths.map(path => {
+      paths = !unscoredPaths ? null : unscoredPaths.map(path => {
         const {hops} = path;
 
         return Object.assign(
