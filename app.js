@@ -211,7 +211,7 @@ app.get('/api/:userId', function(req, res) {
 
   db.getUserInfo2(userId)
     .then(userInfo => {
-      log.info('app.js returned userInfo', userInfo);
+      //log.info('app.js returned userInfo', userInfo);
       res.send(userInfo).end();
     })
     .catch(error => {
@@ -246,7 +246,7 @@ app.get('/api/user/:locationId', (req,res) => {
     locationId = req.params.locationId;
   db.getUserByLocation(locationId)
     .then(user => {
-      log.info(user);
+      //log.info(user);
       res.send(user).end();
     });
 });
@@ -258,7 +258,7 @@ app.get('/api/:userId/getLocation', (req,res) => {
     userId = req.params.userId;
   db.getLocationByUserId(userId)
     .then(location => {
-      log.info(location);
+      //log.info(location);
       res.send(location).end();
     });
     //.then((location) => log.info('app.js', location));
@@ -269,10 +269,10 @@ app.get('/api/:userId/getLocation', (req,res) => {
 app.post('/api/:userId/postLocation', (req,res) => {
   const {name, country, city, postal} = req.body,
     userId = req.params.userId;
-  log.info('app.js post location', req.body);
+  //log.info('app.js post location', req.body);
   db.connectUserToLocation(userId, name, country, city, postal)
     .then(location => {
-      log.info('app.js post location after connect', location);
+      //log.info('app.js post location after connect', location);
       res.send(location).end();
     })
     .catch(error => {
@@ -297,7 +297,7 @@ app.delete('/api/:locationId/deleteLocation', (req,res) =>{
 //UPDATE LOCATION
 app.post('/api/:locationId/updateLocation', (req,res) =>{
   const {name, country, city, postal} = req.body,
-    locationId = req.params.locationId;
+    locationId = parseInt(req.params.locationId);
 
   log.info('app.js pre', name, req.body);
   db.updateLocation(locationId, name, country, city, postal)
