@@ -5,12 +5,17 @@ const
   current = {
     opinion: 0,
     user: 0,
-    topic: 0
+    topic: 0,
+    location: 0
   };
 
 function init() {
-  return join(getOpinionMax(), getUserMax(), getTopicMax())
+  return join(getOpinionMax(), getUserMax(), getTopicMax(), getLocationMax())
     .then(log.promise('id generator initial values'));
+}
+
+function nextLocationId() {
+  return current.location += 1;
 }
 
 function nextOpinionId() {
@@ -48,14 +53,21 @@ function getTopicMax() {
     .then(maxVal => current.topic = maxVal);
 }
 
+function getLocationMax() {
+  return cq.query(createMaxValueQuery('Location', 'id'))
+    .then(extractMax)
+    .then(maxVal => current.location = maxVal);
+}
+
 function extractMax(neoData) {
   const [{data: [{row: [maxVal]}]}] = neoData.results;
 
-  return maxVal;
+  return maxVal || 0;
 }
 
 module.exports = {
   init,
+  nextLocationId,
   nextOpinionId,
   nextUserId,
   nextTopicId

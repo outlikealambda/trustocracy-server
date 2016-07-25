@@ -18,6 +18,13 @@ const queryBuilder = {
             RETURN u as user, emails, collect({friend: f, relationship: type(r)}) as neighbors`;
   },
 
+  getUserInfoWithLocations: id => {
+    return `MATCH (u:Person)-[${rel.personEmail.hasEmail}]->(e:Email)
+            WHERE u.id = ${id}
+            WITH u as user, collect(e.email) as emails
+            RETURN user, emails`;
+  },
+
   userByEmail: email => {
     return `MATCH (e:Email)<-[${rel.personEmail.hasEmail}]-(u:Person)
             WHERE e.email = '${email}'
@@ -36,6 +43,59 @@ const queryBuilder = {
         .map(email => `(:Contact)-[${rel.personEmail.hasEmail}]->(:Email{email:'${email}'})`)
         .join(', ');
   },
+
+
+  //user by location
+  userByLocation : locationId => {
+    return `MATCH (z:Location {id: ${locationId}})<-[]-(p:Person)
+            RETURN p`;
+  },
+
+  //parameters user id
+  //returns [Locations: [Country, City, Postal]]
+  locationByUserId : userId => {
+    return `MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:POSTAL]->(postal:Postal))
+            MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:CITY]->(city:City))
+            MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:COUNTRY]->(country:Country))
+            WHERE p.id = ${userId}
+            RETURN l, country, city, postal`;
+  },
+
+  /*
+  this method creates 4 relationships given a userId and
+  location, country, city, and postal names
+  relationships:
+  CONSTITUENT_OF
+  POSTAL
+  CITY
+  COUNTRY
+  */
+  connectUserToLocation: (userId, locationId, locationName, country, city, postal) => {
+    return `MERGE (co:Country {name:"${country}"})
+            MERGE (ci:City {name:"${city}"})
+            MERGE (po:Postal {name:"${postal}"})
+            WITH co, ci, po
+            MATCH (p:Person {id : ${userId}})
+            CREATE (p)-[${rel.personLocation.constituentOf}]->(l:Location {id: ${locationId}, name: "${locationName}"})
+            MERGE (l)-[${rel.locationRel.country}]->(co)
+            MERGE (l)-[${rel.locationRel.city}]->(ci)
+            MERGE (l)-[${rel.locationRel.postalCode}]->(po)
+            RETURN l,co,ci,po`;
+  },
+
+
+  //this method removes a location node and all of its relationships
+  removeLocation: (locationId) => {
+    return `MATCH (l:Location)<-[cf:CONSTITUENT_OF]-(p:Person)
+            WHERE l.id =${locationId}
+            DELETE cf
+            WITH l
+            MATCH (l:Location)-[po:POSTAL]->(:Postal)
+            MATCH (l:Location)-[ci:CITY]->(:City)
+            MATCH (l:Location)-[co:COUNTRY]->(:Country)
+            DELETE po,ci,co,l;`;
+  },
+
 
   // adds a :KNOWS relationship to all people (users/contacts) who aren't
   // already related to userId

@@ -20,6 +20,22 @@ function getUserInfo(id) {
   return cq.query(qb.userInfo(id)).then(transformer.userInfo);
 }
 
+function getUserInfoWithLocations(id) {
+  return cq.query(qb.getUserInfoWithLocations(id))
+    .then(transformer.userInfoWithLocation)
+    .then(userInfo => {
+      log.info('graph.js basicUser', userInfo);
+      return cq.query(qb.locationByUserId(id))
+        .then(transformer.location)
+        .then(locations => {
+          log.info('graph.js locations', locations);
+          userInfo.location = locations;
+          log.info('graph.js basicUser w/ location', userInfo);
+          return userInfo;
+        });
+    });
+}
+
 function getUser(id) {
   return cq.query(qb.user(id)).then(transformer.user);
 }
@@ -179,6 +195,17 @@ function saveOpinion(userId, topicId, qualifiedOpinion) {
     });
 }
 
+//gets location by user id
+function getLocationByUserId(userId) {
+  return cq.query(qb.locationByUserId(userId))
+    .then(transformer.location);
+}
+
+function getUserByLocation(locationId) {
+  return cq.query(qb.userByLocation(locationId))
+    .then(transformer.basicUser);
+}
+
 function getOpinionById(opinionId) {
   return cq.query(qb.opinionById(opinionId))
     .then(transformer.opinion);
@@ -242,6 +269,40 @@ function connectUserToEmails(userId, emailsWithDups) {
     .then(() => cq.query(qb.knowAllUnconnectedEmails(userId, emails)));
 }
 
+/*
+given userId, and string values for:
+location, country, city
+and number:
+postal
+a user to location relationship is created
+*/
+function connectUserToLocation(userId, name, country, city, postal) {
+  const
+    locationId = idGenerator.nextLocationId();
+  //log.info('graph.js location name:', name, country, city, postal);
+  return cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal))
+  .then(transformer.location);
+}
+
+function removeLocation(locationId) {
+  return cq.query(qb.removeLocation(locationId))
+    .then( val => log.info(val));
+}
+
+function updateLocation(locationId, name, country, city, postal) {
+  return cq.query(qb.userByLocation(locationId))
+    .then(transformer.basicUser)
+    .then(result => {
+      cq.query(qb.removeLocation(locationId));
+      log.info('graph.js basicUser: ', result);
+      return result.id;})
+    .then(userId => {
+      log.info('graph.js userId post remove',userId);
+      log.info('graph.js location name post remove', name);
+      cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal));
+    })
+    .then(() => ({name, id: locationId, country, city, postal}));
+}
 
 const transformer = {
   user : extractFirstResult,
@@ -281,7 +342,13 @@ const transformer = {
     };
   }),
 
+  basicUser : neoData => extractFirstData(neoData, extractUser),
+
+  userInfoWithLocation : neoData => extractFirstData(neoData, extractFullUser),
+
   emails : neoData => extractAllData(neoData, row => row[0].email),
+
+  location : neoData => extractAllData(neoData, extractUserLocation),
 
   opinion : neoData => extractFirstData(neoData, extractUserOpinion),
 
@@ -414,6 +481,39 @@ function noResults(neoData) {
   // has results
   return false;
 }
+function extractFullUser(row){
+  const [user, emails] = row;
+  log.info('graph.js eFU row', row);
+
+  return(
+    { name: user.name,
+      id: user.id,
+      emails: emails
+    }
+  );
+}
+
+function extractUser(row){
+  const [user] = row;
+
+  return(
+    {name: user.name,
+    id: user.id}
+  );
+}
+
+function extractUserLocation(row) {
+  const [location, country, city, postal] = row;
+
+  return(
+    { id: location.id,
+      name: location.name,
+      country: country.name,
+      city: city.name,
+      postal: postal.name
+    }
+  );
+}
 
 // Record specific extractions
 function extractUserOpinion(row) {
@@ -458,6 +558,7 @@ function selectBestPaths(paths) {
   return [...lowestScores.values()];
 }
 
+
 function scorePath(path) {
   return path.reduce((score, step) => {
     switch (step) {
@@ -475,13 +576,17 @@ function scorePath(path) {
 module.exports = {
   getUser,
   getUserInfo,
+  getUserInfoWithLocations,
   getUserByGoogleId,
   getUserByFacebookId,
+  connectUserToLocation,
   createUser,
   createUserWithFacebookId,
   createUserWithGoogleId,
   getNearestOpinions,
   getConnectedOpinions,
+  getLocationByUserId,
+  getUserByLocation,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,
@@ -507,7 +612,8 @@ module.exports = {
   getTopics,
 
   delegate,
-
+  updateLocation,
+  removeLocation,
   validateUser,
 
   connectUserToEmails
