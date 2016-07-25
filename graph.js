@@ -362,20 +362,25 @@ const transformer = {
 
   connected : neoData => extractAllData(neoData, row => {
     const
-      [opinion, author, rawConnections] = row,
-      connections = rawConnections.map(rawConnection => {
+      [opinion, author, rawConnections, qualifications] = row,
+      paths = rawConnections.map(rawConnection => {
         const [relationship, friend, hops] = rawConnection;
 
         return {
-          friend: Object.assign(friend, {relationship: relationship}),
-          hops
+          trustee: Object.assign({}, friend, {relationship: relationship}),
+          hops,
+          score: scorePath(hops)
         };
       });
 
     return {
-      opinion,
-      author,
-      connections
+      opinion: Object.assign(
+         {},
+         opinion,
+         {author},
+         {qualifications}
+       ),
+      paths: selectBestPaths(paths)
     };
   }),
 
@@ -512,15 +517,16 @@ function extractUserLocation(row) {
 
 // Record specific extractions
 function extractUserOpinion(row) {
-  const [opinion, opiner, qualifications] = row;
+  const [opinion, author, qualifications] = row;
 
   return Object.assign(
     {},
     opinion,
-    { opiner : opiner },
-    { qualifications: qualifications }
+    { author},
+    { qualifications }
   );
 }
+
 
 function getUniqueStartFinishCombos(scoredPaths) {
   const map = new Map();
@@ -535,6 +541,23 @@ function getUniqueStartFinishCombos(scoredPaths) {
 
   return [...map.values()];
 }
+
+// since there may be multiple paths between a trustee and an opinion
+// only show the one with the lowest score
+function selectBestPaths(paths) {
+  const lowestScores = new Map();
+
+  for (let path of paths) {
+    const currentLowest = lowestScores.get(path.trustee.name);
+
+    if (!currentLowest || path.score < currentLowest.score) {
+      lowestScores.set(path.trustee.name, path);
+    }
+  }
+
+  return [...lowestScores.values()];
+}
+
 
 function scorePath(path) {
   return path.reduce((score, step) => {
