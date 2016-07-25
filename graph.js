@@ -22,7 +22,7 @@ function getUserInfo(id) {
 
 function getUserInfoWithLocations(id) {
   return cq.query(qb.getUserInfoWithLocations(id))
-    .then(transformer.userInfo2)
+    .then(transformer.userInfoWithLocation)
     .then(userInfo => {
       log.info('graph.js basicUser', userInfo);
       return cq.query(qb.locationByUserId(id))
@@ -344,7 +344,7 @@ const transformer = {
 
   basicUser : neoData => extractFirstData(neoData, extractUser),
 
-  userInfo2 : neoData => extractFirstData(neoData, extractFullUser),
+  userInfoWithLocation : neoData => extractFirstData(neoData, extractFullUser),
 
   emails : neoData => extractAllData(neoData, row => row[0].email),
 
