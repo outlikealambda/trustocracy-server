@@ -20,8 +20,8 @@ function getUserInfo(id) {
   return cq.query(qb.userInfo(id)).then(transformer.userInfo);
 }
 
-function getUserInfo2(id) {
-  return cq.query(qb.userInfo2(id))
+function getUserInfoWithLocations(id) {
+  return cq.query(qb.getUserInfoWithLocations(id))
     .then(transformer.userInfo2)
     .then(userInfo => {
       log.info('graph.js basicUser', userInfo);
@@ -552,7 +552,7 @@ function scorePath(path) {
 
 module.exports = {
   getUserInfo,
-  getUserInfo2,
+  getUserInfoWithLocations,
   getUserByGoogleId,
   getUserByFacebookId,
   connectUserToLocation,

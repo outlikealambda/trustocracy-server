@@ -18,7 +18,7 @@ const queryBuilder = {
             RETURN u as user, emails, collect({friend: f, relationship: type(r)}) as neighbors`;
   },
 
-  userInfo2: id => {
+  getUserInfoWithLocations: id => {
     return `MATCH (u:Person)-[${rel.personEmail.hasEmail}]->(e:Email)
             WHERE u.id = ${id}
             WITH u as user, collect(e.email) as emails

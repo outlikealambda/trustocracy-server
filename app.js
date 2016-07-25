@@ -209,7 +209,7 @@ app.get('/api/:userId', function(req, res) {
   const
     userId = req.params.userId;
 
-  db.getUserInfo2(userId)
+  db.getUserInfoWithLocations(userId)
     .then(userInfo => {
       //log.info('app.js returned userInfo', userInfo);
       res.send(userInfo).end();
