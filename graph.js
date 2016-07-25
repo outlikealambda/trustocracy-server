@@ -375,11 +375,11 @@ const transformer = {
 
     return {
       opinion: Object.assign(
-         {},
-         opinion,
-         {author},
-         {qualifications}
-       ),
+        {},
+        opinion,
+        {author},
+        {qualifications}
+      ),
       paths: selectBestPaths(paths)
     };
   }),
@@ -522,7 +522,7 @@ function extractUserOpinion(row) {
   return Object.assign(
     {},
     opinion,
-    { author},
+    { author },
     { qualifications }
   );
 }
@@ -574,6 +574,7 @@ function scorePath(path) {
 }
 
 module.exports = {
+  getUser,
   getUserInfo,
   getUserInfoWithLocations,
   getUserByGoogleId,
