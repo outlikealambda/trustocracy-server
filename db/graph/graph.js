@@ -226,6 +226,11 @@ function getConnectedOpinionsViaPlugin(userId, topicId) {
     .then(transformer.connectedPlugin);
 }
 
+function getOpinionInfluence(opinionId) {
+  return cq.query(qb.opinionInfluencePlugin(opinionId))
+    .then(transformer.influence);
+}
+
 function getTopic(id) {
   return cq.query(qb.topic(id))
     .then(transformer.topic);
@@ -343,6 +348,12 @@ const transformer = {
       opinion,
       paths
     };
+  }),
+
+  influence : neoData => extractFirstData(neoData, row => {
+    const [ , , influence] = row;
+
+    return {influence};
   }),
 
   nearest: neoData => {
@@ -522,6 +533,7 @@ module.exports = {
   getNearestOpinions,
   getConnectedOpinions,
   getConnectedOpinionsViaPlugin,
+  getOpinionInfluence,
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,

@@ -47,6 +47,17 @@ app.get('/api/opinion/:opinionId', (req, res) => {
     .then(opinion => res.send(opinion).end());
 });
 
+app.get('/api/opinion/:opinionId/influence', (req, res) => {
+  const {opinionId} = req.params;
+
+  gdb.getOpinionInfluence(opinionId)
+    .then(influence => res.send(influence).end())
+    .catch(err => {
+      log.info('error getting influence!', err);
+      res.status(500).send('could not get influence');
+    });
+});
+
 // takes a list of ids, and returns a list of opinions
 app.get('/api/opinions/:ids', (req, res) => {
   const opinionIds = req.params.ids.split(',');
@@ -449,6 +460,7 @@ app.get('/api/secure/delegate/lookup', (req, res) => {
     });
 
 });
+
 
 app.get('/*', function(req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);

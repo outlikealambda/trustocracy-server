@@ -72,7 +72,9 @@ const queryBuilder = {
             RETURN o, author, COLLECT([type(fr), f, extract(r in rs | type(r))]) as connections, q`;
   },
 
-  connectedPluginCall: (userId, topicId) => `CALL traverse.distance(${userId}, ${topicId}, 6)`,
+  connectedPluginCall: (userId, topicId) => `CALL traverse.distance(${userId}, ${topicId}, 5)`,
+
+  opinionInfluencePlugin: opinionId => `CALL influence.opinion(${opinionId}, 5)`,
 
   opinionsByIds: ids => {
     const idList = ids.join();
