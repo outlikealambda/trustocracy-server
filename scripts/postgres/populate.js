@@ -34,11 +34,11 @@ const
       endpoints: [
         {
           id : 0,
-          label : 'I am right!'
+          label : 'I am right'
         },
         {
           id: 1,
-          label: 'You are wrong!'
+          label: 'They are wrong'
         }
       ]
     }
@@ -76,7 +76,7 @@ const
         },
         {
           id: 1,
-          label: 'Rocket Science 303'
+          label: 'Rocket Science'
         }
       ]
     }
@@ -91,7 +91,7 @@ const
       answers: [
         {
           id : 0,
-          label : 'I learned something!'
+          label : 'I learned something'
         },
         {
           id: 1,
@@ -145,7 +145,7 @@ const
         },
         {
           id: 2,
-          label: 'Ice cold and smooth'
+          label: 'Ice cold with jagged edges'
         }
       ]
     }

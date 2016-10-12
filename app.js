@@ -50,12 +50,35 @@ app.get('/api/opinion/:opinionId', (req, res) => {
 app.get('/api/opinion/:opinionId/influence', (req, res) => {
   const {opinionId} = req.params;
 
-  gdb.getOpinionInfluence(opinionId)
-    .then(influence => res.send(influence).end())
-    .catch(err => {
-      log.info('error getting influence!', err);
-      res.status(500).send('could not get influence');
-    });
+  setTimeout(() => {
+    gdb.getOpinionInfluence(opinionId)
+      .then(influence => res.send(influence).end())
+      .catch(err => {
+        log.info('error getting influence!', err);
+        res.status(500).send('could not get influence');
+      });
+  }, 100);
+});
+
+app.get('/api/opinion/:opinionId/metrics', (req, res) => {
+  res.send([
+    {
+      questionId: 1,
+      rating: Math.random() * 100
+    },
+    {
+      questionId: 2,
+      rating: Math.random() * 100
+    },
+    {
+      questionId: 4,
+      rating: Math.random() * 100
+    },
+    {
+      questionId: 5,
+      rating: Math.random() * 100
+    }
+  ]).end();
 });
 
 // takes a list of ids, and returns a list of opinions
