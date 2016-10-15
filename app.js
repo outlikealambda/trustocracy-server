@@ -11,6 +11,7 @@ const
   gdb = require('./db/graph/graph'),
   rdb = require('./db/relational/relational'),
   log = require('./logger'),
+  bb = require('bluebird'),
 
   // init first for env variables
   app = express(),
@@ -357,6 +358,31 @@ app.get('/api/secure/topic/:topicId/connected/v3', function(req, res) {
       log.info(error);
       res.status(500).end('server error!');
     });
+});
+
+app.get('/api/secure/topic/:topicId/connected/v4', function(req, res) {
+  const
+    topicId = req.params.topicId,
+    userId = req.userId;
+
+  bb.join(
+      gdb.getConnectedOpinionsViaPlugin(userId, topicId),
+      gdb.getOpinionsByTopic(topicId),
+      mergeOnId)
+    .then(opinions => res.send(opinions).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+
+  function mergeOnId(connected, disjoint) {
+    let connectedIds = connected.map(c => c.opinion.id);
+
+    // maybe not the most efficient -- would a foreach with .push be faster?
+    return connected.concat(
+      disjoint.filter(opinion => !connectedIds.includes(opinion.id))
+    );
+  }
 });
 
 // returns the opinion (if it exists) a :userId has written on :topicId
