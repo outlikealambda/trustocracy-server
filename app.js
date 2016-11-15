@@ -251,6 +251,22 @@ app.get('/favicon.ico', (req, res) => {
   res.end();
 });
 
+//get user, emails and locations
+app.get('/api/:userId', function(req, res) {
+  const
+    userId = req.params.userId;
+
+  gdb.getUserInfoWithLocations(userId)
+    .then(userInfo => {
+      //log.info('app.js returned userInfo', userInfo);
+      res.send(userInfo).end();
+    })
+    .catch(error => {
+      log.info(error);
+      res.status(404).end('Unknown user');
+    });
+});
+
 
 // ----------------
 // CLOSED ENDPOINTS
@@ -269,6 +285,79 @@ app.get('/api/secure/user', function(req, res) {
     .catch(error => {
       log.info(error);
       res.status(404).end('Unknown user');
+    });
+});
+
+//returns the location assosciated with the logged in user id
+//GET LOCATION
+app.get('/api/secure/getLocation', (req,res) => {
+  const userId = req.userId;
+  log.info(userId);
+  gdb.getLocationByUserId(userId)
+    .then(location => {
+      //log.info(location);
+      res.send(location).end();
+    });
+    //.then((location) => log.info('app.js', location));
+});
+
+app.get('/api/user/:locationId', (req,res) => {
+  const
+    locationId = req.params.locationId;
+
+  gdb.getUserByLocation(locationId)
+    .then(user => {
+      //log.info(user);
+      res.send(user).end();
+    });
+});
+
+
+
+//creates relationships between user and location components
+//POST LOCATION
+app.post('/api/secure/postLocation', (req,res) => {
+  const {name, country, city, postal} = req.body,
+    userId = req.userId;
+  //log.info('app.js post location', req.body);
+  gdb.connectUserToLocation(userId, name, country, city, postal)
+    .then(location => {
+      //log.info('app.js post location after connect', location);
+      res.send(location).end();
+    })
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+});
+
+//DELETE LOCATION
+app.delete('/api/:locationId/deleteLocation', (req,res) =>{
+  const
+    locationId = req.params.locationId;
+
+  gdb.removeLocation(locationId)
+    .then(() => res.send(locationId).end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+});
+
+//UPDATE LOCATION
+app.post('/api/:locationId/updateLocation', (req,res) =>{
+  const {name, country, city, postal} = req.body,
+    locationId = parseInt(req.params.locationId);
+
+  //log.info('app.js pre', name, req.body);
+  gdb.updateLocation(locationId, name, country, city, postal)
+    .then(updateLocation => {
+      //log.info('app.js post', updateLocation);
+      res.send(updateLocation).end();
+    })
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
     });
 });
 
