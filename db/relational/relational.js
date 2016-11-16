@@ -19,6 +19,13 @@ function getPickOneQuestions(topicId) {
     .then(humps.camelizeKeys);
 }
 
+function getRateQuestionIds() {
+  return db
+    .any(query.rateQuestions)
+    .then(humps.camelizeKeys)
+    .then(questions => questions.map(q => q.id));
+}
+
 const answer = {
 
   create : (topicId, opinionId, userId, questionId, picked, rated) =>
@@ -39,5 +46,6 @@ const answer = {
 module.exports = {
   answer,
   getQuestions,
-  getPickOneQuestions
+  getPickOneQuestions,
+  getRateQuestionIds
 };

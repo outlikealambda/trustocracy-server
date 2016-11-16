@@ -15,6 +15,11 @@ module.exports = {
       AND question.type = 'PICK'
     `,
 
+  rateQuestions:
+    `SELECT question.* FROM question
+      WHERE question.type = 'RATE'
+    `,
+
   answer : {
 
     create :

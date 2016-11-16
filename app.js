@@ -62,24 +62,15 @@ app.get('/api/opinion/:opinionId/influence', (req, res) => {
 });
 
 app.get('/api/opinion/:opinionId/metrics', (req, res) => {
-  res.send([
-    {
-      questionId: 1,
-      rating: Math.random() * 100
-    },
-    {
-      questionId: 2,
-      rating: Math.random() * 100
-    },
-    {
-      questionId: 4,
-      rating: Math.random() * 100
-    },
-    {
-      questionId: 5,
-      rating: Math.random() * 100
-    }
-  ]).end();
+  rdb.getRateQuestionIds()
+    .then(questionIds =>
+      questionIds.map(questionId =>
+        ({ questionId, rating: Math.random() * 100 })))
+    .then(questions => res.send(questions).end())
+    .catch(err => {
+      log.info('error getting rate question metrics!', err);
+      res.status(500).send('could not get rate question metrics');
+    });
 });
 
 // takes a list of ids, and returns a list of opinions
