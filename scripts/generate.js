@@ -4,9 +4,9 @@ const
   generateName = require('sillyname'),
   faker = require('faker'),
   forcem = require('forcem-ipsum'),
-  idGenerator = require('./id-generator'),
-  cq = require('./cypher-query'),
-  log = require('./logger'),
+  idGenerator = require('../db/graph/id-generator'),
+  cq = require('../db/graph/cypher-query'),
+  log = require('../logger'),
   startingUserId = 0,
   startingTopicId = 0,
   finalTopicId = 8,
@@ -208,7 +208,7 @@ function createTopic(topicId) {
   const
     // title = faker.lorem.words(faker.random.number(6) + 3).join(' '),
     title = topics[topicId],
-    query = `CREATE (t:Topic {id:${topicId}, text:"${title}"})`;
+    query = `CREATE (t:Topic {id:${topicId}, text:"${title}", created:0})`;
 
   return cq.query(query);
 }
