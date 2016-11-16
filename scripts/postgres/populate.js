@@ -1,5 +1,5 @@
 const
-  connectionString = 'postgres://wr:@localhost/trusto',
+  connectionString = 'postgres://trusto:@localhost/trusto',
   logger = require('../../logger'),
   db = require('pg-promise')()(connectionString);
 
@@ -162,8 +162,10 @@ standard.forEach(question => {
 
   db.one(insertStatement, question)
     .then(data => data.id)
-    .then(qid => {
-      return db.batch(topics.map(tid => db.one('insert into topic_question(topic_id, question_id) values($1, $2) returning id', [tid, qid])));
-    })
+    .then(qid => 
+      db.task(t => 
+        t.batch(
+          topics.map(tid =>
+            t.one('insert into topic_question(topic_id, question_id) values($1, $2) returning id', [tid, qid])))))
     .then(data => logger.info(data));
 });

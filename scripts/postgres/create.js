@@ -1,5 +1,5 @@
 const
-  connectionString = 'postgres://wr:@localhost/trusto',
+  connectionString = 'postgres://trusto:@localhost/trusto',
   logger = require('../../logger'),
   pgp = require('pg-promise')(),
   db = pgp(connectionString),
