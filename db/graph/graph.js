@@ -1,13 +1,12 @@
 'use strict';
 
-const
-  {reject} = require('bluebird'),
-  cq = require('./cypher-query'),
-  qb = require('./query-builder'),
-  idGenerator = require('./id-generator'),
-  log = require('../../logger'),
-  models = require('./models'),
-  _ = require('lodash');
+const {reject} = require('bluebird');
+const cq = require('./cypher-query');
+const qb = require('./query-builder');
+const idGenerator = require('./id-generator');
+const log = require('../../logger');
+const models = require('./models');
+const _ = require('lodash');
 
 function validateUser (id, saltedSecret) {
   log.info('validating', id, saltedSecret);
@@ -49,17 +48,15 @@ function getUserByGoogleId (gaUserId) {
 }
 
 function createUser (name, email, salt) {
-  const
-    userByEmail = qb.userByEmail(email);
+  const userByEmail = qb.userByEmail(email);
 
-  let
-    userId;
+  let userId;
 
   cq.query(userByEmail)
     .then(transformer.user)
     .then(user => {
       if (user.id) {
-        throw 'already exists!';
+        throw new Error('already exists!');
       }
 
       // only generate if new user
@@ -112,17 +109,16 @@ function createUserWithFacebookId (fbUserId, name) {
 }
 
 function createUserWithGoogleId (gaUserId, name, email) {
-  const
-    userId = idGenerator.nextUserId(),
-    upgradeContact = qb.upgradeContactToGaPerson(userId, gaUserId, name, email),
+  const userId = idGenerator.nextUserId();
+  const upgradeContact = qb.upgradeContactToGaPerson(userId, gaUserId, name, email);
     // createUser = qb.createGoogleUser(userId, gaUserId, name);
-    createUser = qb.createUser({
-      person: {
-        id: userId,
-        gaUserId,
-        name
-      }
-    });
+  const createUser = qb.createUser({
+    person: {
+      id: userId,
+      gaUserId,
+      name
+    }
+  });
 
   log.info('creating/upgrading google user', gaUserId, name, email);
 
@@ -169,18 +165,16 @@ function publishOpinion (draftId, opinionId) {
 }
 
 function saveOpinion (userId, topicId, qualifiedOpinion) {
-  const
-    // split up the qualified opinion for the graphDb
-
-    // always increment the draftId;
-    // reuse the opinionId if it's there;
-    opinion = {
-      id: qualifiedOpinion.id || idGenerator.nextOpinionId(),
-      draftId: idGenerator.nextDraftId(),
-      text: qualifiedOpinion.text,
-      influence: 0
-    },
-    qualifications = qualifiedOpinion.qualifications;
+  // split up the qualified opinion for the graphDb
+  // always increment the draftId;
+  // reuse the opinionId if it's there;
+  const opinion = {
+    id: qualifiedOpinion.id || idGenerator.nextOpinionId(),
+    draftId: idGenerator.nextDraftId(),
+    text: qualifiedOpinion.text,
+    influence: 0
+  };
+  const qualifications = qualifiedOpinion.qualifications;
 
   return cq.queryWithParams(qb.createOpinion(userId, topicId), {opinion, qualifications})
     .then(() => {
@@ -188,7 +182,7 @@ function saveOpinion (userId, topicId, qualifiedOpinion) {
       return Object.assign(
         {},
         opinion,
-        { qualifications: qualifications},
+        { qualifications: qualifications },
         { user: qualifiedOpinion.user }
       );
     });
@@ -224,7 +218,7 @@ function getOpinionsByTopic (topicId) {
 function getOpinionByUserTopic (userId, topicId) {
   return cq.query(qb.opinionDraftByUserTopic(userId, topicId))
     .then(transformer.opinion)
-    .then(opinion => opinion ? opinion : models.opinion);
+    .then(opinion => opinion || models.opinion);
 }
 
 function getNearestOpinions (userId, topicId) {
@@ -285,8 +279,7 @@ postal
 a user to location relationship is created
 */
 function connectUserToLocation (userId, name, country, city, postal) {
-  const
-    locationId = idGenerator.nextLocationId();
+  const locationId = idGenerator.nextLocationId();
   // log.info('graph.js location name:', name, country, city, postal);
   return cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal))
   .then(transformer.location);
@@ -328,9 +321,8 @@ const transformer = {
   userInfo: neoData => extractFirstData(neoData, row => {
     log.info(row);
 
-    const
-      [user, emails, neighbors] = row,
-      trustees =
+    const [user, emails, neighbors] = row;
+    const trustees =
         neighbors
           // if we have no friends, OPTIONAL MATCH returns an empty neighbor
           // so filter those out here
@@ -370,17 +362,16 @@ const transformer = {
   topics: neoData => extractAllData(neoData, extractTopic),
 
   connected: neoData => extractAllData(neoData, row => {
-    const
-      [opinion, author, rawConnections, qualifications] = row,
-      paths = rawConnections.map(rawConnection => {
-        const [relationship, friend, hops] = rawConnection;
+    const [opinion, author, rawConnections, qualifications] = row;
+    const paths = rawConnections.map(rawConnection => {
+      const [relationship, friend, hops] = rawConnection;
 
-        return {
-          trustee: Object.assign({}, friend, {relationship: relationship}),
-          hops,
-          score: scorePath(hops)
-        };
-      });
+      return {
+        trustee: Object.assign({}, friend, {relationship: relationship}),
+        hops,
+        score: scorePath(hops)
+      };
+    });
 
     return {
       opinion: Object.assign(
@@ -394,17 +385,16 @@ const transformer = {
   }),
 
   connectedPlugin: neoData => extractAllData(neoData, row => {
-    const
-      [unscoredPaths, opinion] = row,
-      paths = !unscoredPaths ? null : unscoredPaths.map(path => {
-        const {hops} = path;
+    const [unscoredPaths, opinion] = row;
+    const paths = !unscoredPaths ? null : unscoredPaths.map(path => {
+      const {hops} = path;
 
-        return Object.assign(
-          {},
-          path,
-          { score: scorePath(hops) + scoreRelationship(path.trustee.relationship) }
-        );
-      });
+      return Object.assign(
+        {},
+        path,
+        { score: scorePath(hops) + scoreRelationship(path.trustee.relationship) }
+      );
+    });
 
     return {
       opinion,
@@ -413,16 +403,15 @@ const transformer = {
   }),
 
   influence: neoData => extractFirstData(neoData, row => {
-    const [ , , influence] = row;
+    const [,, influence] = row;
 
     return {influence};
   }),
 
   nearest: neoData => {
     const scoredPaths = extractAllData(neoData, row => {
-      const
-        [friendRelationship, friend, path, opiner, opinion] = row,
-        score = scorePath(path);
+      const [friendRelationship, friend, path, opiner, opinion] = row;
+      const score = scorePath(path);
 
       return {
         friend: Object.assign(
