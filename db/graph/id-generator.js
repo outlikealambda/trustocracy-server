@@ -48,43 +48,31 @@ function createMaxValueQuery (nodeType, field) {
 function getOpinionMax () {
   return cq.query(createMaxValueQuery('Opinion', 'id'))
     .then(extractMax)
-    .then(maxVal => {
-      current.opinion = maxVal;
-      return;
-    });
+    .then(maxVal => (current.opinion = maxVal));
 }
 
 function getDraftMax () {
   return cq.query(createMaxValueQuery('Opinion', 'draftId'))
     .then(extractMax)
-    .then(maxVal => {
-      current.draft = maxVal;
-      return;
-    });
+    .then(maxVal => (current.draft = maxVal));
 }
 
 function getUserMax () {
   return cq.query(createMaxValueQuery('Person', 'id'))
     .then(extractMax)
-    .then(maxVal => {
-      current.user = maxVal;
-      return;
-    });
+    .then(maxVal => (current.user = maxVal));
 }
 
 function getTopicMax () {
   return cq.query(createMaxValueQuery('Topic', 'id'))
     .then(extractMax)
-    .then(maxVal => {
-      current.topic = maxVal;
-      return;
-    });
+    .then(maxVal => (current.topic = maxVal));
 }
 
 function getLocationMax () {
   return cq.query(createMaxValueQuery('Location', 'id'))
     .then(extractMax)
-    .then(maxVal => { current.location = maxVal; return; });
+    .then(maxVal => (current.location = maxVal));
 }
 
 function extractMax (neoData) {
