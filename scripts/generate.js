@@ -35,8 +35,7 @@ function createUser (id, createStatements) {
   logCreation(id, 'users');
 
   const name = generateName();
-  const nameDot = name.replace(' ', '.');
-  const email = nameDot + '@gmail.com';
+  const email = name.replace(' ', '.').toLowerCase() + '@gmail.com';
   const query = `(:Person {name: '${name}', id: ${id}})-[:HAS_EMAIL]->(:Email {email: '${email}'})`;
 
   createStatements.push(query);
