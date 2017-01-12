@@ -1,14 +1,13 @@
-const
-  join = require('bluebird').join,
-  cq = require('./cypher-query'),
-  log = require('../../logger'),
-  current = {
-    opinion: 0,
-    draft: 0,
-    user: 0,
-    topic: 0,
-    location: 0
-  };
+const join = require('bluebird').join;
+const cq = require('./cypher-query');
+const log = require('../../logger');
+const current = {
+  opinion: 0,
+  draft: 0,
+  user: 0,
+  topic: 0,
+  location: 0
+};
 
 function init () {
   return join(
@@ -22,23 +21,23 @@ function init () {
 }
 
 function nextLocationId () {
-  return current.location += 1;
+  current.location += 1;
 }
 
 function nextOpinionId () {
-  return current.opinion += 1;
+  current.opinion += 1;
 }
 
 function nextDraftId () {
-  return current.draft += 1;
+  current.draft += 1;
 }
 
 function nextUserId () {
-  return current.user += 1;
+  current.user += 1;
 }
 
 function nextTopicId () {
-  return current.topic += 1;
+  current.topic += 1;
 }
 
 function createMaxValueQuery (nodeType, field) {
@@ -49,31 +48,43 @@ function createMaxValueQuery (nodeType, field) {
 function getOpinionMax () {
   return cq.query(createMaxValueQuery('Opinion', 'id'))
     .then(extractMax)
-    .then(maxVal => current.opinion = maxVal);
+    .then(maxVal => {
+      current.opinion = maxVal;
+      return;
+    });
 }
 
 function getDraftMax () {
   return cq.query(createMaxValueQuery('Opinion', 'draftId'))
     .then(extractMax)
-    .then(maxVal => current.draft = maxVal);
+    .then(maxVal => {
+      current.draft = maxVal;
+      return;
+    });
 }
 
 function getUserMax () {
   return cq.query(createMaxValueQuery('Person', 'id'))
     .then(extractMax)
-    .then(maxVal => current.user = maxVal);
+    .then(maxVal => {
+      current.user = maxVal;
+      return;
+    });
 }
 
 function getTopicMax () {
   return cq.query(createMaxValueQuery('Topic', 'id'))
     .then(extractMax)
-    .then(maxVal => current.topic = maxVal);
+    .then(maxVal => {
+      current.topic = maxVal;
+      return;
+    });
 }
 
 function getLocationMax () {
   return cq.query(createMaxValueQuery('Location', 'id'))
     .then(extractMax)
-    .then(maxVal => current.location = maxVal);
+    .then(maxVal => { current.location = maxVal; return; });
 }
 
 function extractMax (neoData) {
