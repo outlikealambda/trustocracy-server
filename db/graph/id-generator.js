@@ -21,23 +21,23 @@ function init () {
 }
 
 function nextLocationId () {
-  current.location += 1;
+  return (current.location += 1);
 }
 
 function nextOpinionId () {
-  current.opinion += 1;
+  return (current.opinion += 1);
 }
 
 function nextDraftId () {
-  current.draft += 1;
+  return (current.draft += 1);
 }
 
 function nextUserId () {
-  current.user += 1;
+  return (current.user += 1);
 }
 
 function nextTopicId () {
-  current.topic += 1;
+  return (current.topic += 1);
 }
 
 function createMaxValueQuery (nodeType, field) {
