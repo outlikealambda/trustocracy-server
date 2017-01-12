@@ -14,8 +14,8 @@ const
     options: {
       endpoints: [
         {
-          id : 0,
-          label : 'Whoa, chill out!'
+          id: 0,
+          label: 'Whoa, chill out!'
         },
         {
           id: 1,
@@ -33,8 +33,8 @@ const
     options: {
       endpoints: [
         {
-          id : 0,
-          label : 'I am right'
+          id: 0,
+          label: 'I am right'
         },
         {
           id: 1,
@@ -52,8 +52,8 @@ const
     options: {
       endpoints: [
         {
-          id : 0,
-          label : 'Post-it note'
+          id: 0,
+          label: 'Post-it note'
         },
         {
           id: 1,
@@ -90,8 +90,8 @@ const
     options: {
       answers: [
         {
-          id : 0,
-          label : 'I learned something'
+          id: 0,
+          label: 'I learned something'
         },
         {
           id: 1,
@@ -109,16 +109,16 @@ const
     options: {
       answers: [
         {
-          id : 0,
-          label : 'This is totally mind-changing'
+          id: 0,
+          label: 'This is totally mind-changing'
         },
         {
-          id : 1,
-          label : 'I learned more about why I was right'
+          id: 1,
+          label: 'I learned more about why I was right'
         },
         {
-          id : 2,
-          label : 'I already knew and agreed with these points'
+          id: 2,
+          label: 'I already knew and agreed with these points'
         },
         {
           id: 3,
@@ -136,8 +136,8 @@ const
     options: {
       answers: [
         {
-          id : 0,
-          label : 'Warm and fuzzy'
+          id: 0,
+          label: 'Warm and fuzzy'
         },
         {
           id: 1,
@@ -151,8 +151,7 @@ const
     }
   },
   standard = [respectful, balanced, facts, complexity, learn, changeYourMind, warmAndFuzzy],
-  topics = [0,1,2,3,4,5,6,7,8];
-
+  topics = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
 standard.forEach(question => {
   const insertStatement =
@@ -162,8 +161,8 @@ standard.forEach(question => {
 
   db.one(insertStatement, question)
     .then(data => data.id)
-    .then(qid => 
-      db.task(t => 
+    .then(qid =>
+      db.task(t =>
         t.batch(
           topics.map(tid =>
             t.one('insert into topic_question(topic_id, question_id) values($1, $2) returning id', [tid, qid])))))

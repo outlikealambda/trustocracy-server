@@ -7,7 +7,7 @@ const
   jwtSign = jwt.sign,
   crypto = require('crypto');
 
-function extract(trustoJwt, trustoSecret) {
+function extract (trustoJwt, trustoSecret) {
   try {
     const decoded = jwtVerify(trustoJwt, trustoSecret);
     return bb.resolve(decoded);
@@ -17,7 +17,7 @@ function extract(trustoJwt, trustoSecret) {
   }
 }
 
-function saltSecret(secret, options) {
+function saltSecret (secret, options) {
   return crypto.pbkdf2Sync(
     secret,
     options.salt,
@@ -30,7 +30,7 @@ function saltSecret(secret, options) {
 module.exports = (trustoSecret, saltOptions) => {
   return {
 
-    validateMiddleware : (req, res, next) => {
+    validateMiddleware: (req, res, next) => {
       extract(req.cookies.trustoToken, trustoSecret)
         .then(claims => {
           req.userId = claims.sub;
@@ -39,7 +39,7 @@ module.exports = (trustoSecret, saltOptions) => {
         .catch(() => res.status(401).send('please log in').end());
     },
 
-    getUserId : (req) => {
+    getUserId: (req) => {
       // handle error at endpoint
       return extract(req.cookies.trustoToken, trustoSecret)
         .then(claims => claims.sub);

@@ -35,7 +35,7 @@ createUser(startingUserId, [])
 
 // recursively creates users, as neo doesn't like creating 10000 in a single
 // statement -- MUCH slower though.  let's try batching 500 per call
-function createUser(id, createStatements) {
+function createUser (id, createStatements) {
   if (id >= USER_COUNT) {
     return createStatements.length ? finishCreateQuery(createStatements) : null;
   }
@@ -58,12 +58,12 @@ function createUser(id, createStatements) {
   }
 }
 
-function finishCreateQuery(createStatements) {
+function finishCreateQuery (createStatements) {
   return cq.query('CREATE ' + createStatements.join());
 }
 
 // recursive call
-function buildRelationships(id, relationship, probs) {
+function buildRelationships (id, relationship, probs) {
   if (id >= USER_COUNT) {
     return;
   }
@@ -80,7 +80,7 @@ function buildRelationships(id, relationship, probs) {
 }
 
 // returns [{id, name}]
-function getTrusters(id, relationship) {
+function getTrusters (id, relationship) {
   const neighborQuery =
     `MATCH (u:Person)<-[r:${relationship}]-(p:Person)
      WHERE u.id=${id}
@@ -89,7 +89,7 @@ function getTrusters(id, relationship) {
   return cq.query(neighborQuery).then(processIds);
 }
 
-function getTrustees(id, relationship) {
+function getTrustees (id, relationship) {
   const relationshipLabel = relationship ? ':' + relationship : '',
     neighborQuery =
       `MATCH (u:Person)-[r${relationshipLabel}]->(p:Person)
@@ -99,12 +99,12 @@ function getTrustees(id, relationship) {
   return cq.query(neighborQuery).then(processIds);
 }
 
-function processIds(neoData) {
+function processIds (neoData) {
   const [{data}] = neoData.results;
   return data.map(datum => datum.row[0].id);
 }
 
-function getReciprocalTargets(trusterIds, probability) {
+function getReciprocalTargets (trusterIds, probability) {
   // console.log('possible reciprocal: ', trusterIds);
 
   const res = trusterIds.reduce((acc, trusterId) => {
@@ -120,12 +120,12 @@ function getReciprocalTargets(trusterIds, probability) {
   return res;
 }
 
-function generateNewIds(sourceId, existingIds, probability) {
+function generateNewIds (sourceId, existingIds, probability) {
   const ids = [];
 
   // console.log('sourceId: ' + sourceId + ', reciprocal relationships: ', existingIds);
 
-  while(shouldGenerateNewId(ids.length + existingIds.length, probability)) {
+  while (shouldGenerateNewId(ids.length + existingIds.length, probability)) {
     ids.push(generateNewId(sourceId, existingIds, ids, USER_COUNT));
   }
 
@@ -134,7 +134,7 @@ function generateNewIds(sourceId, existingIds, probability) {
   return ids;
 }
 
-function shouldGenerateNewId(idCount, probability) {
+function shouldGenerateNewId (idCount, probability) {
   if (idCount === 0) {
     return isHappens(probability.ltOne());
   }
@@ -148,13 +148,12 @@ function shouldGenerateNewId(idCount, probability) {
 
 // recursively tries until it gets an unused id.
 // there is no guard against this running out of ids, but...
-function generateNewId(sourceId, oldIds, newIds, maxVal) {
+function generateNewId (sourceId, oldIds, newIds, maxVal) {
   const newId = generateRandomInt(0, maxVal);
 
   if (newId !== sourceId &&
       oldIds.indexOf(newId) === -1 &&
       newIds.indexOf(newId) === -1) {
-
     return newId;
   }
 
@@ -163,11 +162,11 @@ function generateNewId(sourceId, oldIds, newIds, maxVal) {
 }
 
 // [min, max)
-function generateRandomInt(min, max) {
+function generateRandomInt (min, max) {
   return Math.floor(Math.random() * (max - min) + min);
 }
 
-function createRelationship(sourceId, targetId, relationship) {
+function createRelationship (sourceId, targetId, relationship) {
   const query =
     `MATCH (a:Person), (b:Person)
      WHERE a.id = ${sourceId} AND b.id = ${targetId}
@@ -176,9 +175,9 @@ function createRelationship(sourceId, targetId, relationship) {
   return cq.query(query).then(() => targetId);
 }
 
-function assignOpinions(topicId, finalTopicId) {
+function assignOpinions (topicId, finalTopicId) {
   const
-    opinionCount = Math.ceil(USER_COUNT/(NODES_PER_OPINION + faker.random.number(200))),
+    opinionCount = Math.ceil(USER_COUNT / (NODES_PER_OPINION + faker.random.number(200))),
     userIds = [];
 
   if (topicId > finalTopicId) {
@@ -204,7 +203,7 @@ function assignOpinions(topicId, finalTopicId) {
     .then(() => assignOpinions(topicId + 1, finalTopicId));
 }
 
-function createTopic(topicId) {
+function createTopic (topicId) {
   const
     // title = faker.lorem.words(faker.random.number(6) + 3).join(' '),
     title = topics[topicId],
@@ -225,7 +224,7 @@ const topics = [
   'Housing Prices'
 ];
 
-function createOpinion({userId, opinionId, topicId}) {
+function createOpinion ({userId, opinionId, topicId}) {
   const
     paragraphs = forcem('e' + generateRandomInt(4, 7), generateRandomInt(1, 6)),
     text = paragraphs.join('\n\n'),
@@ -241,12 +240,12 @@ function createOpinion({userId, opinionId, topicId}) {
   return cq.query(query).then(() => opinionId);
 }
 
-function isHappens(probability) {
+function isHappens (probability) {
   return Math.random() > (1 - probability);
 }
 
-function logCreation(id, label) {
+function logCreation (id, label) {
   if ((id + 1) % 100 === 0) {
-    log.info(`finished creating ${id+1} ${label}`);
+    log.info(`finished creating ${id + 1} ${label}`);
   }
 }

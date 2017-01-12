@@ -20,20 +20,20 @@ module.exports = {
       WHERE question.type = 'RATE'
     `,
 
-  answer : {
+  answer: {
 
-    create :
+    create:
       `INSERT INTO answer(topic_id, opinion_id, user_id, question_id, picked, rated)
        VALUES($<topicId>, $<opinionId>, $<userId>, $<questionId>, $<picked>, $<rated>)
        returning id`,
 
-    update :
+    update:
       `UPDATE answer
        SET picked = $<picked>, rated = $<rated>
        WHERE answer.id = $<answerId>
        returning id`,
 
-    remove :
+    remove:
       `DELETE FROM answer
        WHERE answer.id = $<answerId>`,
 
@@ -45,16 +45,16 @@ module.exports = {
       `
   },
 
-  consensus : {
+  consensus: {
 
-    topic : {
-      picked :
+    topic: {
+      picked:
         `SELECT opinion_id, question_id, picked, count(picked)
           FROM answer
           WHERE topic_id = $<topicId> AND picked IS NOT NULL
           GROUP BY opinion_id, question_id, picked`,
 
-      rated :
+      rated:
         `SELECT opinion_id, question_id, avg(rated)
           FROM answer
           WHERE topic_id = $<topicId> AND rated IS NOT NULL
@@ -62,14 +62,14 @@ module.exports = {
         `
     },
 
-    opinion : {
-      picked :
+    opinion: {
+      picked:
         `SELECT question_id, picked, count(picked)
           FROM answer
           WHERE opinion_id = $<opinionId> AND picked IS NOT NULL
           GROUP BY question_id, picked`,
 
-      rated :
+      rated:
         `SELECT question_id, avg(rated)
           FROM answer
           WHERE opinion_id = $<opinionId> AND rated IS NOT NULL

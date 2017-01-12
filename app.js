@@ -1,26 +1,24 @@
 'use strict';
 
-const
-  express = require('express'),
-  logger = require('morgan'),
-  bodyParser = require('body-parser'),
-  cookieParser = require('cookie-parser'),
+const express = require('express');
+const logger = require('morgan');
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 
-  idGenerator = require('./db/graph/id-generator'),
-  frontend = require('./frontend'),
-  gdb = require('./db/graph/graph'),
-  rdb = require('./db/relational/relational'),
-  log = require('./logger'),
-  bb = require('bluebird'),
+const idGenerator = require('./db/graph/id-generator');
+const frontend = require('./frontend');
+const gdb = require('./db/graph/graph');
+const rdb = require('./db/relational/relational');
+const log = require('./logger');
+const bb = require('bluebird');
 
   // init first for env variables
-  app = express(),
+const app = express();
 
-  { fbDecodeAndValidate, fbGetMe } = require('./facebook'),
-  { fbSecret, trustoSecret, gaApiKey, saltOptions } = require(`./config-${app.get('env')}.json`),
-  googleAuth = require('./googleAuth')(gaApiKey),
-  trustoAuth = require('./trustoAuth')(trustoSecret, saltOptions);
-
+const { fbDecodeAndValidate, fbGetMe } = require('./facebook');
+const { fbSecret, trustoSecret, gaApiKey, saltOptions } = require(`./config-${app.get('env')}.json`);
+const googleAuth = require('./googleAuth')(gaApiKey);
+const trustoAuth = require('./trustoAuth')(trustoSecret, saltOptions);
 
 // Configuration
 app.set('port', process.env.PORT || 3714);
@@ -32,7 +30,6 @@ app.use(bodyParser.urlencoded({
   extended: false
 }));
 app.use(cookieParser());
-
 
 // ------------------------------
 // OPEN ENDPOINTS (no-validation)
@@ -122,7 +119,6 @@ app.get('/api/topic', (req, res) => {
     .then(topics => res.send(topics).end());
 });
 
-
 app.post('/api/signup', (req, res) => {
   const {name, email, password} = req.body;
 
@@ -137,10 +133,9 @@ app.post('/api/signup', (req, res) => {
 
 // validates the user against the gdb
 app.get('/api/login', (req, res) => {
-  const
-    authorization = req.headers.authorization || '',
-    [, basicAuth]= authorization.split('Basic '),
-    [userName, secret] = basicAuth ? Buffer.from(basicAuth, 'base64').toString('ascii').split(':') : ['', ''];
+  const authorization = req.headers.authorization || '';
+  const [, basicAuth] = authorization.split('Basic ');
+  const [userName, secret] = basicAuth ? Buffer.from(basicAuth, 'base64').toString('ascii').split(':') : ['', ''];
 
   if (!userName) {
     res.status(401).send('missing basic auth credentials').end();
@@ -154,7 +149,6 @@ app.get('/api/login', (req, res) => {
       log.info('login error!');
       res.status(401).send('invalid credentials, please try again!').end();
     });
-
 });
 
 // checks if there is a valid jwt session with a user; returns the user
@@ -167,7 +161,7 @@ app.get('/api/checkUser', (req, res) => {
     });
 });
 
-function saveUserAsCookie(res, userInfo) {
+function saveUserAsCookie (res, userInfo) {
   log.info('user info', userInfo);
   return res.cookie('trustoToken', trustoAuth.createJwt(userInfo), { 'maxAge': 1000 * 60 * 60 });
 }
@@ -201,16 +195,13 @@ app.get('/api/gaUser', (req, res) => {
 
         res.status(401).end(err);
       });
-
   });
 });
-
 
 // login with google authentication
 // requires an idToken attached via headers.fbsignedrequest
 app.get('/api/fbUser', (req, res) => {
-  const [ errMsg, data ] =
-    fbDecodeAndValidate(fbSecret, req.headers.fbsignedrequest);
+  const [ errMsg, data ] = fbDecodeAndValidate(fbSecret, req.headers.fbsignedrequest);
 
   if (errMsg) {
     res.status(401).send(errMsg).end();
@@ -235,21 +226,19 @@ app.get('/api/fbUser', (req, res) => {
     .catch(err => res.status(401).end(err));
 });
 
-
 // just so the catchall doesn't get it and fail
 // if the elm server isn't running
 app.get('/favicon.ico', (req, res) => {
   res.end();
 });
 
-//get user, emails and locations
-app.get('/api/:userId', function(req, res) {
-  const
-    userId = req.params.userId;
+// get user, emails and locations
+app.get('/api/:userId', function (req, res) {
+  const userId = req.params.userId;
 
   gdb.getUserInfoWithLocations(userId)
     .then(userInfo => {
-      //log.info('app.js returned userInfo', userInfo);
+      // log.info('app.js returned userInfo', userInfo);
       res.send(userInfo).end();
     })
     .catch(error => {
@@ -258,17 +247,15 @@ app.get('/api/:userId', function(req, res) {
     });
 });
 
-
 // ----------------
 // CLOSED ENDPOINTS
 // ----------------
-
 
 app.use('/api/secure/*', trustoAuth.validateMiddleware);
 
 // returns userInfo
 // TODO: make sure that :id matches cookie Id
-app.get('/api/secure/user', function(req, res) {
+app.get('/api/secure/user', function (req, res) {
   const userId = req.userId;
 
   gdb.getUserInfo(userId)
@@ -279,41 +266,39 @@ app.get('/api/secure/user', function(req, res) {
     });
 });
 
-//returns the location assosciated with the logged in user id
-//GET LOCATION
-app.get('/api/secure/getLocation', (req,res) => {
+// returns the location assosciated with the logged in user id
+// GET LOCATION
+app.get('/api/secure/getLocation', (req, res) => {
   const userId = req.userId;
   log.info(userId);
   gdb.getLocationByUserId(userId)
     .then(location => {
-      //log.info(location);
+      // log.info(location);
       res.send(location).end();
     });
-    //.then((location) => log.info('app.js', location));
+    // .then((location) => log.info('app.js', location));
 });
 
-app.get('/api/user/:locationId', (req,res) => {
+app.get('/api/user/:locationId', (req, res) => {
   const
     locationId = req.params.locationId;
 
   gdb.getUserByLocation(locationId)
     .then(user => {
-      //log.info(user);
+      // log.info(user);
       res.send(user).end();
     });
 });
 
-
-
-//creates relationships between user and location components
-//POST LOCATION
-app.post('/api/secure/postLocation', (req,res) => {
-  const {name, country, city, postal} = req.body,
-    userId = req.userId;
-  //log.info('app.js post location', req.body);
+// creates relationships between user and location components
+// POST LOCATION
+app.post('/api/secure/postLocation', (req, res) => {
+  const {name, country, city, postal} = req.body;
+  const userId = req.userId;
+  // log.info('app.js post location', req.body);
   gdb.connectUserToLocation(userId, name, country, city, postal)
     .then(location => {
-      //log.info('app.js post location after connect', location);
+      // log.info('app.js post location after connect', location);
       res.send(location).end();
     })
     .catch(error => {
@@ -322,10 +307,9 @@ app.post('/api/secure/postLocation', (req,res) => {
     });
 });
 
-//DELETE LOCATION
-app.delete('/api/:locationId/deleteLocation', (req,res) =>{
-  const
-    locationId = req.params.locationId;
+// DELETE LOCATION
+app.delete('/api/:locationId/deleteLocation', (req, res) => {
+  const locationId = req.params.locationId;
 
   gdb.removeLocation(locationId)
     .then(() => res.send(locationId).end())
@@ -335,15 +319,15 @@ app.delete('/api/:locationId/deleteLocation', (req,res) =>{
     });
 });
 
-//UPDATE LOCATION
-app.post('/api/:locationId/updateLocation', (req,res) =>{
-  const {name, country, city, postal} = req.body,
-    locationId = parseInt(req.params.locationId);
+// UPDATE LOCATION
+app.post('/api/:locationId/updateLocation', (req, res) => {
+  const {name, country, city, postal} = req.body;
+  const locationId = parseInt(req.params.locationId);
 
-  //log.info('app.js pre', name, req.body);
+  // log.info('app.js pre', name, req.body);
   gdb.updateLocation(locationId, name, country, city, postal)
     .then(updateLocation => {
-      //log.info('app.js post', updateLocation);
+      // log.info('app.js post', updateLocation);
       res.send(updateLocation).end();
     })
     .catch(error => {
@@ -353,9 +337,8 @@ app.post('/api/:locationId/updateLocation', (req,res) =>{
 });
 
 app.get('/api/secure/gaContacts', (req, res) => {
-  const
-    userId = req.userId,
-    accessToken = req.headers.gaaccesstoken;
+  const userId = req.userId;
+  const accessToken = req.headers.gaaccesstoken;
 
   googleAuth.retrieveContacts(accessToken)
     .then(contacts => contacts
@@ -372,17 +355,15 @@ app.get('/api/secure/gaContacts', (req, res) => {
 });
 
 // returns connected opinions for a user/topic
-app.get('/api/secure/topic/:topicId/connected', function(req, res) {
-  const
-    topicId = req.params.topicId,
-    userId = req.userId;
+app.get('/api/secure/topic/:topicId/connected', function (req, res) {
+  const topicId = req.params.topicId;
+  const userId = req.userId;
 
   res.set({ 'Content-Type': 'application/json' });
 
   gdb.getNearestOpinions(userId, topicId)
     .then(nearest => res.send(nearest).end());
 });
-
 
 // returns an array of objects containing both paths to the opinion and the
 // opinion itself:
@@ -412,10 +393,9 @@ app.get('/api/secure/topic/:topicId/connected', function(req, res) {
 //     }
 //   ]
 // }
-app.get('/api/secure/topic/:topicId/connected/v2', function(req, res) {
-  const
-    topicId = req.params.topicId,
-    userId = req.userId;
+app.get('/api/secure/topic/:topicId/connected/v2', function (req, res) {
+  const topicId = req.params.topicId;
+  const userId = req.userId;
 
   gdb.getConnectedOpinions(userId, topicId)
     .then(nearest => res.send(nearest).end())
@@ -427,10 +407,9 @@ app.get('/api/secure/topic/:topicId/connected/v2', function(req, res) {
 
 // uses a native Neo4j plugin to retrieve connections, as opposed to a cypher
 // query
-app.get('/api/secure/topic/:topicId/connected/v3', function(req, res) {
-  const
-    topicId = req.params.topicId,
-    userId = req.userId;
+app.get('/api/secure/topic/:topicId/connected/v3', function (req, res) {
+  const topicId = req.params.topicId;
+  const userId = req.userId;
 
   gdb.getConnectedOpinionsViaPlugin(userId, topicId)
     .then(nearest => res.send(nearest).end())
@@ -440,10 +419,9 @@ app.get('/api/secure/topic/:topicId/connected/v3', function(req, res) {
     });
 });
 
-app.get('/api/secure/topic/:topicId/connected/v4', function(req, res) {
-  const
-    topicId = req.params.topicId,
-    userId = req.userId;
+app.get('/api/secure/topic/:topicId/connected/v4', function (req, res) {
+  const topicId = req.params.topicId;
+  const userId = req.userId;
 
   bb.join(
       gdb.getConnectedOpinionsViaPlugin(userId, topicId),
@@ -455,7 +433,7 @@ app.get('/api/secure/topic/:topicId/connected/v4', function(req, res) {
       res.status(500).end('server error!');
     });
 
-  function mergeOnId(connected, disjoint) {
+  function mergeOnId (connected, disjoint) {
     let connectedIds = connected.map(c => c.opinion.id);
 
     // maybe not the most efficient -- would a foreach with .push be faster?
@@ -467,10 +445,9 @@ app.get('/api/secure/topic/:topicId/connected/v4', function(req, res) {
 
 // returns the opinion (if it exists) a :userId has written on :topicId
 // TODO: make sure that :userId matches cookie Id
-app.get('/api/secure/topic/:topicId/opinion', function(req, res) {
-  const
-    topicId = req.params.topicId,
-    userId = req.userId;
+app.get('/api/secure/topic/:topicId/opinion', function (req, res) {
+  const topicId = req.params.topicId;
+  const userId = req.userId;
 
   gdb.getOpinionByUserTopic(userId, topicId)
     .then(log.promise('user opinion'))
@@ -482,7 +459,7 @@ app.get('/api/secure/topic/:topicId/opinion', function(req, res) {
             const author = Object.assign(
               {},
               user,
-              {relationship : 'SELF'}
+              {relationship: 'SELF'}
             );
 
             return Object.assign(
@@ -499,31 +476,28 @@ app.get('/api/secure/topic/:topicId/opinion', function(req, res) {
 });
 
 // save and publish an opinion for :topicId
-app.post('/api/secure/topic/:topicId/opinion/publish', function(req, res) {
-  const
-    topicId = req.params.topicId,
-    userId = req.userId,
-    opinion = req.body;
+app.post('/api/secure/topic/:topicId/opinion/publish', function (req, res) {
+  const topicId = req.params.topicId;
+  const userId = req.userId;
+  const opinion = req.body;
 
   gdb.publishOpinion(userId, topicId, opinion)
     .then(published => res.send(published).end());
 });
 
 // save an opinion (but don't publish) for on :topicId
-app.post('/api/secure/topic/:topicId/opinion/save', function(req, res) {
-  const
-    topicId = req.params.topicId,
-    userId = req.userId,
-    opinion = req.body;
+app.post('/api/secure/topic/:topicId/opinion/save', function (req, res) {
+  const topicId = req.params.topicId;
+  const userId = req.userId;
+  const opinion = req.body;
 
   gdb.saveOpinion(userId, topicId, opinion)
     .then(saved => res.send(saved).end());
 });
 
 app.get('/api/secure/topic/:topicId/opinion/:opinionId/answer', (req, res) => {
-  const
-    {topicId, opinionId} = req.params,
-    userId = req.userId;
+  const {topicId, opinionId} = req.params;
+  const userId = req.userId;
 
   rdb.answer.byUser(topicId, opinionId, userId)
     .then(data => res.send(data).end())
@@ -534,10 +508,9 @@ app.get('/api/secure/topic/:topicId/opinion/:opinionId/answer', (req, res) => {
 });
 
 app.post('/api/secure/topic/:topicId/opinion/:opinionId/question/:questionId/answer', (req, res) => {
-  const
-    {topicId, opinionId, questionId} = req.params,
-    userId = req.userId,
-    {picked, rated} = req.body;
+  const {topicId, opinionId, questionId} = req.params;
+  const userId = req.userId;
+  const {picked, rated} = req.body;
 
   rdb.answer.create(topicId, opinionId, userId, questionId, picked, rated)
     .then(answerId => res.send(answerId).end())
@@ -548,9 +521,8 @@ app.post('/api/secure/topic/:topicId/opinion/:opinionId/question/:questionId/ans
 });
 
 app.post('/api/secure/answer/:answerId', (req, res) => {
-  const
-    {answerId} = req.params,
-    {picked, rated} = req.body;
+  const {answerId} = req.params;
+  const {picked, rated} = req.body;
 
   rdb.answer.update(answerId, picked, rated)
     .then(answerId => res.send(answerId).end())
@@ -571,10 +543,9 @@ app.delete('/api/secure/answer/:answerId', (req, res) => {
     });
 });
 
-app.post('/api/secure/delegate', function(req, res) {
-  const
-    userId = req.userId,
-    delegate = req.body;
+app.post('/api/secure/delegate', function (req, res) {
+  const userId = req.userId;
+  const delegate = req.body;
 
   gdb.delegate(userId, delegate)
     .then(d => res.send(d).end());
@@ -587,18 +558,15 @@ app.get('/api/secure/delegate/lookup', (req, res) => {
     .then(trustee => {
       trustee ? res.send(trustee).end() : res.status(404).end();
     });
-
 });
 
-
-app.get('/*', function(req, res) {
+app.get('/*', function (req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);
 });
 
-
 // Start server
 idGenerator.init().then(() => {
-  app.listen(app.get('port'), function() {
+  app.listen(app.get('port'), function () {
     log.info('Starting node');
   });
 });

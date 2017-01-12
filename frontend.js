@@ -1,11 +1,11 @@
 var
   rp = require('request-promise');
 
-function getBaseUrl() {
+function getBaseUrl () {
   return 'http://localhost:8000/';
 }
 
-function proxyGet(requestPath) {
+function proxyGet (requestPath) {
   return rp.get(getBaseUrl() + requestPath);
 }
 

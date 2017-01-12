@@ -12,14 +12,12 @@ const
     resolveWithFullResponse: true
   };
 
-
 let
   certificateExpiry = null,
   certificateCache = {},
   gaApiKey;
 
-
-function asyncValidate(idToken, accessToken, callback) {
+function asyncValidate (idToken, accessToken, callback) {
   getCerts().then(certObj => {
     let
       error = null,
@@ -40,7 +38,6 @@ function asyncValidate(idToken, accessToken, callback) {
         // found a valid cert
         callback(null, payload);
         return;
-
       } catch (err) {
         // only relevant if all certs fail, then we'll fall through to the
         // lower callback
@@ -53,7 +50,7 @@ function asyncValidate(idToken, accessToken, callback) {
   });
 }
 
-function retrieveContacts(accessToken, oldContacts, nextPageToken) {
+function retrieveContacts (accessToken, oldContacts, nextPageToken) {
   const emailAccessOpts = {
     method: 'GET',
     // via stackoverflow, we need the requestMask.  eff google's documentation
@@ -75,7 +72,6 @@ function retrieveContacts(accessToken, oldContacts, nextPageToken) {
 
   return rp(emailAccessOpts)
     .then(res => {
-
       // console.log(res);
       log.info('response', res.connections.length, res.nextPageToken);
 
@@ -89,36 +85,29 @@ function retrieveContacts(accessToken, oldContacts, nextPageToken) {
         ),
         totalContacts = oldContacts.concat(newContacts);
 
-
-
       // no more contacts, stop
       if (!res.nextPageToken) {
         return totalContacts;
       }
 
       return retrieveContacts(accessToken, totalContacts, res.nextPageToken);
-
     })
     .catch(err => log.info('error', err));
-
 }
 
-
-function getNames(contacts) {
+function getNames (contacts) {
   return (contacts.names || [])
     .map(name => name.displayName)
     .filter(name => name);
 }
 
-
-function getEmails(contacts) {
+function getEmails (contacts) {
   return (contacts.emailAddresses || [])
     .map(email => email.value)
     .filter(email => email);
 }
 
-
-function getCerts() {
+function getCerts () {
   if (certificateExpiry && Date.now() < certificateExpiry.getTime()) {
     return bb.resolve(certificateCache);
   }
@@ -137,8 +126,7 @@ function getCerts() {
   });
 }
 
-
-function extractAge(cacheControl) {
+function extractAge (cacheControl) {
   const
     pattern = new RegExp('max-age=([0-9]*)'),
     matches = pattern.exec(cacheControl);
@@ -146,14 +134,13 @@ function extractAge(cacheControl) {
   return matches.length === 2 ? matches[1] * 1000 : -1;
 }
 
-
-module.exports = function(initGaApiKey) {
+module.exports = function (initGaApiKey) {
   gaApiKey = initGaApiKey;
 
   return {
     asyncValidate,
-    retrieveContacts : accessToken => retrieveContacts(accessToken, []),
-    retrieveFakeContacts : () => {
+    retrieveContacts: accessToken => retrieveContacts(accessToken, []),
+    retrieveFakeContacts: () => {
       return bb.resolve([
         {
           names: [],

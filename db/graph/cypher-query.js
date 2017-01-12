@@ -5,12 +5,11 @@ var
     auth: { username: 'neo4j', password: 'graphdb'}
   };
 
-
-function query(cypherQuery) {
+function query (cypherQuery) {
   return queryWithParams(cypherQuery, {});
 }
 
-function queryWithParams(cypherQuery, params) {
+function queryWithParams (cypherQuery, params) {
   return rp(buildOptions(cypherQuery, params))
     .then(result => {
       log.info(result);
@@ -18,7 +17,7 @@ function queryWithParams(cypherQuery, params) {
     });
 }
 
-function buildOptions(cypherQuery, params) {
+function buildOptions (cypherQuery, params) {
   const newOptions = Object.assign({
     method: 'POST',
     url: getCypherUrl(),
@@ -30,15 +29,15 @@ function buildOptions(cypherQuery, params) {
   return newOptions;
 }
 
-function getCypherUrl() {
+function getCypherUrl () {
   return getBaseUrl() + 'db/data/transaction/commit';
 }
 
-function getBaseUrl() {
+function getBaseUrl () {
   return 'http://localhost:7474/';
 }
 
-function createStatement(query, params) {
+function createStatement (query, params) {
   return {
     statements: [
       {

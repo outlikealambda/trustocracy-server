@@ -44,16 +44,15 @@ const queryBuilder = {
         .join(', ');
   },
 
-
-  //user by location
-  userByLocation : locationId => {
+  // user by location
+  userByLocation: locationId => {
     return `MATCH (z:Location {id: ${locationId}})<-[]-(p:Person)
             RETURN p`;
   },
 
-  //parameters user id
-  //returns [Locations: [Country, City, Postal]]
-  locationByUserId : userId => {
+  // parameters user id
+  // returns [Locations: [Country, City, Postal]]
+  locationByUserId: userId => {
     return `MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:POSTAL]->(postal:Postal))
             MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:CITY]->(city:City))
             MATCH ((p:Person)-[:CONSTITUENT_OF]->(l:Location)-[:COUNTRY]->(country:Country))
@@ -83,8 +82,7 @@ const queryBuilder = {
             RETURN l,co,ci,po`;
   },
 
-
-  //this method removes a location node and all of its relationships
+  // this method removes a location node and all of its relationships
   removeLocation: (locationId) => {
     return `MATCH (l:Location)<-[cf:CONSTITUENT_OF]-(p:Person)
             WHERE l.id =${locationId}
@@ -95,7 +93,6 @@ const queryBuilder = {
             MATCH (l:Location)-[co:COUNTRY]->(:Country)
             DELETE po,ci,co,l;`;
   },
-
 
   // adds a :KNOWS relationship to all people (users/contacts) who aren't
   // already related to userId
@@ -150,7 +147,6 @@ const queryBuilder = {
             WHERE t.id = ${topicId}
             OPTIONAL MATCH (o) <-- (q:Qualifications)
             RETURN o, p, q`;
-
   },
 
   opinionById: opinionId => {
@@ -184,7 +180,6 @@ const queryBuilder = {
               c :Person,
               c = { person }
             `;
-
   },
 
   // TODO: pass userId, gaUserId and name as { person }, like upgradeContact above
@@ -254,7 +249,7 @@ const queryBuilder = {
   }
 };
 
-function wrapEmailsInQuotes(emails) {
+function wrapEmailsInQuotes (emails) {
   return emails.map(email => `'${email}'`);
 }
 

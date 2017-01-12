@@ -32,7 +32,6 @@ const
       FOREIGN KEY (question_id) REFERENCES question(id)
     )`;
 
-
 db.none(question)
   .then(() => db.none(answer))
   .then(() => db.none(topicQuestion))

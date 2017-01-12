@@ -4,8 +4,7 @@ const
   crypto = require('crypto'),
   log = require('./logger');
 
-function decodeAndValidate(secret, signedRequest) {
-
+function decodeAndValidate (secret, signedRequest) {
   const
     [ encodedSig, payload ] = signedRequest.split('.'),
     sig = Buffer.from(encodedSig, 'base64').toString('hex'),
@@ -27,7 +26,7 @@ function decodeAndValidate(secret, signedRequest) {
   }
 }
 
-function generateSignature(algorithm, secret, payload) {
+function generateSignature (algorithm, secret, payload) {
   const
     hmac = crypto.createHmac(algorithm, secret);
 

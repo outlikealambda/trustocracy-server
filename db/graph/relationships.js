@@ -2,28 +2,28 @@
 
 module.exports = {
   personPerson: {
-    bffsWith : ':TRUSTS_EXPLICITLY',
-    trusts : ':TRUSTS',
-    knows : ':KNOWS',
+    bffsWith: ':TRUSTS_EXPLICITLY',
+    trusts: ':TRUSTS',
+    knows: ':KNOWS',
     follows: ':TRUSTS_EXPLICITLY|:TRUSTS',
     hasRelationship: ':TRUSTS_EXPLICITLY|:TRUSTS|:KNOWS'
   },
   personEmail: {
     hasEmail: ':HAS_EMAIL'
   },
-  personOpinion : {
+  personOpinion: {
     opines: ':OPINES',
     thinks: ':THINKS'
   },
-  personLocation :{
+  personLocation: {
     constituentOf: ':CONSTITUENT_OF'
   },
-  opinionTopic : {
+  opinionTopic: {
     addresses: ':ADDRESSES'
   },
-  locationRel : {
-    country : ':COUNTRY',
-    city : ':CITY',
-    postalCode : ':POSTAL'
+  locationRel: {
+    country: ':COUNTRY',
+    city: ':CITY',
+    postalCode: ':POSTAL'
   }
 };

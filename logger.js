@@ -7,8 +7,8 @@ const time = console.time;
 
 const timeEnd = console.timeEnd;
 
-function promise(msg) {
-  return function(data) {
+function promise (msg) {
+  return function (data) {
     console.log(msg, data);
     return data;
   };

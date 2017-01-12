@@ -9,18 +9,17 @@ const
   models = require('./models'),
   _ = require('lodash');
 
-
-function validateUser(id, saltedSecret) {
+function validateUser (id, saltedSecret) {
   log.info('validating', id, saltedSecret);
   // TODO: actual validation
   return getUser(id).then(user => !user.salt || user.salt === saltedSecret ? user : reject('no user found'));
 }
 
-function getUserInfo(id) {
+function getUserInfo (id) {
   return cq.query(qb.userInfo(id)).then(transformer.userInfo);
 }
 
-function getUserInfoWithLocations(id) {
+function getUserInfoWithLocations (id) {
   return cq.query(qb.getUserInfoWithLocations(id))
     .then(transformer.userInfoWithLocation)
     .then(userInfo => {
@@ -36,20 +35,20 @@ function getUserInfoWithLocations(id) {
     });
 }
 
-function getUser(id) {
+function getUser (id) {
   return cq.query(qb.user(id)).then(transformer.user);
 }
 
-function getUserByFacebookId(fbUserId) {
+function getUserByFacebookId (fbUserId) {
   return cq.query(qb.fbUser(fbUserId))
     .then(transformer.user);
 }
 
-function getUserByGoogleId(gaUserId) {
+function getUserByGoogleId (gaUserId) {
   return cq.query(qb.gaUser(gaUserId)).then(transformer.user);
 }
 
-function createUser(name, email, salt) {
+function createUser (name, email, salt) {
   const
     userByEmail = qb.userByEmail(email);
 
@@ -78,7 +77,6 @@ function createUser(name, email, salt) {
     })
     .then(transformer.user)
     .then(user => {
-
       // successfully upgraded a contact
       if (user.id) {
         return user;
@@ -101,9 +99,9 @@ function createUser(name, email, salt) {
     });
 }
 
-function createUserWithFacebookId(fbUserId, name) {
+function createUserWithFacebookId (fbUserId, name) {
   const createUser = qb.createUser({
-    person : {
+    person: {
       id: idGenerator.nextUserId(),
       fbUserId,
       name
@@ -113,15 +111,14 @@ function createUserWithFacebookId(fbUserId, name) {
   return cq.query(createUser).then(transformer.user);
 }
 
-function createUserWithGoogleId(gaUserId, name, email) {
-
+function createUserWithGoogleId (gaUserId, name, email) {
   const
     userId = idGenerator.nextUserId(),
     upgradeContact = qb.upgradeContactToGaPerson(userId, gaUserId, name, email),
     // createUser = qb.createGoogleUser(userId, gaUserId, name);
     createUser = qb.createUser({
       person: {
-        id : userId,
+        id: userId,
         gaUserId,
         name
       }
@@ -132,7 +129,6 @@ function createUserWithGoogleId(gaUserId, name, email) {
   return cq.query(upgradeContact)
     .then(transformer.user)
     .then(user => {
-
       // we successfully upgraded an existing contact; done
       if (user.id) {
         return user;
@@ -142,7 +138,6 @@ function createUserWithGoogleId(gaUserId, name, email) {
       return cq.query(createUser)
         .then(transformer.user)
         .then(user => {
-
           // after adding the email, pass through the user
           return cq.query(qb.addEmailToUser(user.id, email))
             .then(() => user);
@@ -152,13 +147,13 @@ function createUserWithGoogleId(gaUserId, name, email) {
 
 // removes any existing delegate relationships, and adds the new relationship
 // TODO: handle topic specific relationships
-function delegate(userId, delegate) {
+function delegate (userId, delegate) {
   return cq.query(qb.removeDelegate(userId, delegate))
     .then(() => cq.query(qb.addDelegate(userId, delegate)))
     .then(() => delegate);
 }
 
-function getTrusteeByEmail(email) {
+function getTrusteeByEmail (email) {
   return cq.query(qb.userByEmail(email))
     .then(transformer.trustee);
 }
@@ -168,22 +163,22 @@ function getTrusteeByEmail(email) {
 // 2. mark the new draft as published
 //
 // we don't transform the result because we don't use it
-function publishOpinion(draftId, opinionId) {
+function publishOpinion (draftId, opinionId) {
   return cq.query(qb.unpublishOpinion(opinionId))
     .then(() => cq.query(qb.publishOpinion(draftId)));
 }
 
-function saveOpinion(userId, topicId, qualifiedOpinion) {
+function saveOpinion (userId, topicId, qualifiedOpinion) {
   const
     // split up the qualified opinion for the graphDb
 
     // always increment the draftId;
     // reuse the opinionId if it's there;
     opinion = {
-      id : qualifiedOpinion.id || idGenerator.nextOpinionId(),
-      draftId : idGenerator.nextDraftId(),
-      text : qualifiedOpinion.text,
-      influence : 0
+      id: qualifiedOpinion.id || idGenerator.nextOpinionId(),
+      draftId: idGenerator.nextDraftId(),
+      text: qualifiedOpinion.text,
+      influence: 0
     },
     qualifications = qualifiedOpinion.qualifications;
 
@@ -193,47 +188,46 @@ function saveOpinion(userId, topicId, qualifiedOpinion) {
       return Object.assign(
         {},
         opinion,
-        { qualifications : qualifications},
-        { user : qualifiedOpinion.user }
+        { qualifications: qualifications},
+        { user: qualifiedOpinion.user }
       );
     });
 }
 
-//gets location by user id
-function getLocationByUserId(userId) {
+// gets location by user id
+function getLocationByUserId (userId) {
   return cq.query(qb.locationByUserId(userId))
     .then(transformer.location);
 }
 
-function getUserByLocation(locationId) {
+function getUserByLocation (locationId) {
   return cq.query(qb.userByLocation(locationId))
     .then(transformer.basicUser);
 }
 
-function getOpinionById(opinionId) {
+function getOpinionById (opinionId) {
   return cq.query(qb.opinionById(opinionId))
     .then(transformer.opinion);
 }
 
-function getOpinionsByIds(ids) {
+function getOpinionsByIds (ids) {
   return cq.query(qb.opinionsByIds(ids))
     .then(transformer.opinionsByIds);
 }
 
-function getOpinionsByTopic(topicId) {
+function getOpinionsByTopic (topicId) {
   return cq.query(qb.opinionsByTopic(topicId))
     .then(transformer.opinionsByTopic);
 }
 
-
 // returns the most recently saved opinion for a user/topic
-function getOpinionByUserTopic(userId, topicId) {
+function getOpinionByUserTopic (userId, topicId) {
   return cq.query(qb.opinionDraftByUserTopic(userId, topicId))
     .then(transformer.opinion)
-    .then(opinion => opinion ? opinion : models.opinion );
+    .then(opinion => opinion ? opinion : models.opinion);
 }
 
-function getNearestOpinions(userId, topicId) {
+function getNearestOpinions (userId, topicId) {
   log.time('opinions');
   return cq.query(qb.nearest(userId, topicId))
     .then(neoData => {
@@ -243,27 +237,27 @@ function getNearestOpinions(userId, topicId) {
     .then(transformer.nearest);
 }
 
-function getConnectedOpinions(userId, topicId) {
+function getConnectedOpinions (userId, topicId) {
   return cq.query(qb.connected(userId, topicId))
     .then(transformer.connected);
 }
 
-function getConnectedOpinionsViaPlugin(userId, topicId) {
+function getConnectedOpinionsViaPlugin (userId, topicId) {
   return cq.query(qb.connectedPluginCall(userId, topicId))
     .then(transformer.connectedPlugin);
 }
 
-function getOpinionInfluence(opinionId) {
+function getOpinionInfluence (opinionId) {
   return cq.query(qb.opinionInfluencePlugin(opinionId))
     .then(transformer.influence);
 }
 
-function getTopic(id) {
+function getTopic (id) {
   return cq.query(qb.topic(id))
     .then(transformer.topic);
 }
 
-function getTopics() {
+function getTopics () {
   return cq.query(qb.topics())
     .then(transformer.topics);
 }
@@ -271,7 +265,7 @@ function getTopics() {
 // given a user and a list of emails, connect the user to any existing
 // contacts or people on that list, and create (and connect) new contacts for
 // any emails not in the graph
-function connectUserToEmails(userId, emailsWithDups) {
+function connectUserToEmails (userId, emailsWithDups) {
   const emails = _.uniq(emailsWithDups);
 
   return cq.query(qb.emailsInGraph(emails))
@@ -290,28 +284,29 @@ and number:
 postal
 a user to location relationship is created
 */
-function connectUserToLocation(userId, name, country, city, postal) {
+function connectUserToLocation (userId, name, country, city, postal) {
   const
     locationId = idGenerator.nextLocationId();
-  //log.info('graph.js location name:', name, country, city, postal);
+  // log.info('graph.js location name:', name, country, city, postal);
   return cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal))
   .then(transformer.location);
 }
 
-function removeLocation(locationId) {
+function removeLocation (locationId) {
   return cq.query(qb.removeLocation(locationId))
-    .then( val => log.info(val));
+    .then(val => log.info(val));
 }
 
-function updateLocation(locationId, name, country, city, postal) {
+function updateLocation (locationId, name, country, city, postal) {
   return cq.query(qb.userByLocation(locationId))
     .then(transformer.basicUser)
     .then(result => {
       cq.query(qb.removeLocation(locationId));
       log.info('graph.js basicUser: ', result);
-      return result.id;})
+      return result.id;
+    })
     .then(userId => {
-      log.info('graph.js userId post remove',userId);
+      log.info('graph.js userId post remove', userId);
       log.info('graph.js location name post remove', name);
       cq.query(qb.connectUserToLocation(userId, locationId, name, country, city, postal));
     })
@@ -319,9 +314,9 @@ function updateLocation(locationId, name, country, city, postal) {
 }
 
 const transformer = {
-  user : extractFirstResult,
+  user: extractFirstResult,
 
-  trustee : neoData => extractFirstData(neoData, row => {
+  trustee: neoData => extractFirstData(neoData, row => {
     const [user] = row;
 
     return {
@@ -330,7 +325,7 @@ const transformer = {
     };
   }),
 
-  userInfo : neoData => extractFirstData(neoData, row => {
+  userInfo: neoData => extractFirstData(neoData, row => {
     log.info(row);
 
     const
@@ -352,29 +347,29 @@ const transformer = {
       name: user.name,
       id: user.id,
       trustees: trustees,
-      emails : emails
+      emails: emails
     };
   }),
 
-  basicUser : neoData => extractFirstData(neoData, extractUser),
+  basicUser: neoData => extractFirstData(neoData, extractUser),
 
-  userInfoWithLocation : neoData => extractFirstData(neoData, extractFullUser),
+  userInfoWithLocation: neoData => extractFirstData(neoData, extractFullUser),
 
-  emails : neoData => extractAllData(neoData, row => row[0].email),
+  emails: neoData => extractAllData(neoData, row => row[0].email),
 
-  location : neoData => extractAllData(neoData, extractUserLocation),
+  location: neoData => extractAllData(neoData, extractUserLocation),
 
-  opinion : neoData => extractFirstData(neoData, extractUserOpinion),
+  opinion: neoData => extractFirstData(neoData, extractUserOpinion),
 
-  opinionsByIds : neoData => extractAllData(neoData, extractUserOpinion),
+  opinionsByIds: neoData => extractAllData(neoData, extractUserOpinion),
 
-  opinionsByTopic : neoData => extractAllData(neoData, extractUserOpinion),
+  opinionsByTopic: neoData => extractAllData(neoData, extractUserOpinion),
 
-  topic : neoData => extractFirstData(neoData, extractTopic),
+  topic: neoData => extractFirstData(neoData, extractTopic),
 
-  topics : neoData => extractAllData(neoData, extractTopic),
+  topics: neoData => extractAllData(neoData, extractTopic),
 
-  connected : neoData => extractAllData(neoData, row => {
+  connected: neoData => extractAllData(neoData, row => {
     const
       [opinion, author, rawConnections, qualifications] = row,
       paths = rawConnections.map(rawConnection => {
@@ -398,7 +393,7 @@ const transformer = {
     };
   }),
 
-  connectedPlugin : neoData => extractAllData(neoData, row => {
+  connectedPlugin: neoData => extractAllData(neoData, row => {
     const
       [unscoredPaths, opinion] = row,
       paths = !unscoredPaths ? null : unscoredPaths.map(path => {
@@ -417,7 +412,7 @@ const transformer = {
     };
   }),
 
-  influence : neoData => extractFirstData(neoData, row => {
+  influence: neoData => extractFirstData(neoData, row => {
     const [ , , influence] = row;
 
     return {influence};
@@ -479,7 +474,7 @@ data generally comes back in the form:
   ]
 }
  */
-function extractAllData(neoData, mapFn = (row => row), defaultResult = []) {
+function extractAllData (neoData, mapFn = (row => row), defaultResult = []) {
   const [{data}] = neoData.results;
 
   return noResults(neoData) ? defaultResult : data.map(datum => mapFn(datum.row));
@@ -488,18 +483,18 @@ function extractAllData(neoData, mapFn = (row => row), defaultResult = []) {
 /**
  * returns the result of mapFn applied to the first element of the results
  */
-function extractFirstData(neoData, mapFn, defaultResult) {
+function extractFirstData (neoData, mapFn, defaultResult) {
   return extractAllData(neoData, mapFn, [])[0] || defaultResult;
 }
 
 // pulls out the first item from the first row of results
-function extractFirstResult(neoData) {
+function extractFirstResult (neoData) {
   return extractFirstData(neoData, row => row[0], {});
 }
 
 // null checks a couple of places in the results data
 // see @extractAllData for the neo4j data structure
-function noResults(neoData) {
+function noResults (neoData) {
   const [result] = neoData.results;
 
   if (!result) {
@@ -515,11 +510,11 @@ function noResults(neoData) {
   // has results
   return false;
 }
-function extractFullUser(row){
+function extractFullUser (row) {
   const [user, emails] = row;
   log.info('graph.js eFU row', row);
 
-  return(
+  return (
     { name: user.name,
       id: user.id,
       emails: emails
@@ -527,19 +522,19 @@ function extractFullUser(row){
   );
 }
 
-function extractUser(row){
+function extractUser (row) {
   const [user] = row;
 
-  return(
+  return (
     {name: user.name,
-    id: user.id}
+      id: user.id}
   );
 }
 
-function extractUserLocation(row) {
+function extractUserLocation (row) {
   const [location, country, city, postal] = row;
 
-  return(
+  return (
     { id: location.id,
       name: location.name,
       country: country.name,
@@ -550,7 +545,7 @@ function extractUserLocation(row) {
 }
 
 // Record specific extractions
-function extractUserOpinion(row) {
+function extractUserOpinion (row) {
   const [opinion, author, qualifications] = row;
 
   return Object.assign(
@@ -561,7 +556,7 @@ function extractUserOpinion(row) {
   );
 }
 
-function extractTopic(row) {
+function extractTopic (row) {
   const [topic, opinionCount, lastUpdated] = row;
 
   return Object.assign(
@@ -574,9 +569,7 @@ function extractTopic(row) {
   );
 }
 
-
-
-function getUniqueStartFinishCombos(scoredPaths) {
+function getUniqueStartFinishCombos (scoredPaths) {
   const map = new Map();
 
   for (let sp of scoredPaths) {
@@ -592,7 +585,7 @@ function getUniqueStartFinishCombos(scoredPaths) {
 
 // since there may be multiple paths between a trustee and an opinion
 // only show the one with the lowest score
-function selectBestPaths(paths) {
+function selectBestPaths (paths) {
   const lowestScores = new Map();
 
   for (let path of paths) {
@@ -606,20 +599,19 @@ function selectBestPaths(paths) {
   return [...lowestScores.values()];
 }
 
-
-function scorePath(path) {
+function scorePath (path) {
   return path.reduce((score, hop) => score + scoreRelationship(hop), 0);
 }
 
-function scoreRelationship(relationship) {
+function scoreRelationship (relationship) {
   switch (relationship) {
-  case 'TRUSTS_EXPLICITLY':
-    return 1;
-  case 'TRUSTS':
-    return 2;
-  default:
-    log.info(`What kind of path is this: ${relationship}?`);
-    return 0;
+    case 'TRUSTS_EXPLICITLY':
+      return 1;
+    case 'TRUSTS':
+      return 2;
+    default:
+      log.info(`What kind of path is this: ${relationship}?`);
+      return 0;
   }
 }
 
@@ -648,11 +640,10 @@ module.exports = {
 
   saveOpinion, // saves, and returns with saved id attached
 
-
   // 1. save the opinion as a draft
   // 2. mark it as published
   // 3. return that opinion
-  publishOpinion : function (userId, topicId, qualifiedOpinion) {
+  publishOpinion: function (userId, topicId, qualifiedOpinion) {
     return saveOpinion(userId, topicId, qualifiedOpinion)
       .then(newDraft => {
         return publishOpinion(newDraft.draftId, newDraft.opinionId)
