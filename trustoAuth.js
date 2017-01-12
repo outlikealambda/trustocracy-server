@@ -1,11 +1,10 @@
-const
-  db = require('./db/graph/graph'),
-  bb = require('bluebird'),
-  log = require('./logger'),
-  jwt = require('jsonwebtoken'),
-  jwtVerify = jwt.verify,
-  jwtSign = jwt.sign,
-  crypto = require('crypto');
+const db = require('./db/graph/graph');
+const bb = require('bluebird');
+const log = require('./logger');
+const jwt = require('jsonwebtoken');
+const jwtVerify = jwt.verify;
+const jwtSign = jwt.sign;
+const crypto = require('crypto');
 
 function extract (trustoJwt, trustoSecret) {
   try {
@@ -46,14 +45,13 @@ module.exports = (trustoSecret, saltOptions) => {
     },
 
     createJwt: userInfo => {
-      const options =
-        {
-          algorithm: 'HS256',
-          subject: userInfo.id,
-          issuer: 'trustocracy.org',
-          audience: 'trustocracy.org',
-          expiresIn: 3600
-        };
+      const options = {
+        algorithm: 'HS256',
+        subject: userInfo.id,
+        issuer: 'trustocracy.org',
+        audience: 'trustocracy.org',
+        expiresIn: 3600
+      };
 
       return jwtSign({}, trustoSecret, options);
     },
