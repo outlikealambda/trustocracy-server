@@ -1,29 +1,28 @@
 'use strict';
 
-const
-  generateName = require('sillyname'),
-  faker = require('faker'),
-  forcem = require('forcem-ipsum'),
-  idGenerator = require('../db/graph/id-generator'),
-  cq = require('../db/graph/cypher-query'),
-  log = require('../logger'),
-  startingUserId = 0,
-  startingTopicId = 0,
-  finalTopicId = 8,
-  USER_COUNT = 3000,
-  NODES_PER_OPINION = 300,
-  explicitProbability = {
-    reciprocity: 0.7,
-    ltOne: () => 1,
-    ltThree: () => 0.9,
-    gteThree: count => Math.pow(0.8, count - 2)
-  },
-  regularProbability = {
-    reciprocity: 0.3,
-    ltOne: () => 1,
-    ltThree: () => 0.92,
-    gteThree: count => Math.pow(0.86, count - 2)
-  };
+const generateName = require('sillyname');
+const faker = require('faker');
+const forcem = require('forcem-ipsum');
+const idGenerator = require('../db/graph/id-generator');
+const cq = require('../db/graph/cypher-query');
+const log = require('../logger');
+const startingUserId = 0;
+const startingTopicId = 0;
+const finalTopicId = 8;
+const USER_COUNT = 3000;
+const NODES_PER_OPINION = 300;
+const explicitProbability = {
+  reciprocity: 0.7,
+  ltOne: () => 1,
+  ltThree: () => 0.9,
+  gteThree: count => Math.pow(0.8, count - 2)
+};
+const regularProbability = {
+  reciprocity: 0.3,
+  ltOne: () => 1,
+  ltThree: () => 0.92,
+  gteThree: count => Math.pow(0.86, count - 2)
+};
 
 createUser(startingUserId, [])
   .then(() => buildRelationships(startingUserId, 'TRUSTS_EXPLICITLY', explicitProbability))
@@ -42,11 +41,10 @@ function createUser (id, createStatements) {
 
   logCreation(id, 'users');
 
-  const
-    name = generateName(),
-    nameDot = name.replace(' ', '.'),
-    email = nameDot + '@gmail.com',
-    query = `(:Person {name: '${name}', id: ${id}})-[:HAS_EMAIL]->(:Email {email: '${email}'})`;
+  const name = generateName();
+  const nameDot = name.replace(' ', '.');
+  const email = nameDot + '@gmail.com';
+  const query = `(:Person {name: '${name}', id: ${id}})-[:HAS_EMAIL]->(:Email {email: '${email}'})`;
 
   createStatements.push(query);
 
@@ -90,11 +88,11 @@ function getTrusters (id, relationship) {
 }
 
 function getTrustees (id, relationship) {
-  const relationshipLabel = relationship ? ':' + relationship : '',
-    neighborQuery =
-      `MATCH (u:Person)-[r${relationshipLabel}]->(p:Person)
-       WHERE u.id=${id}
-       RETURN p`;
+  const relationshipLabel = relationship ? ':' + relationship : '';
+  const neighborQuery =
+    `MATCH (u:Person)-[r${relationshipLabel}]->(p:Person)
+     WHERE u.id=${id}
+     RETURN p`;
 
   return cq.query(neighborQuery).then(processIds);
 }
@@ -105,8 +103,6 @@ function processIds (neoData) {
 }
 
 function getReciprocalTargets (trusterIds, probability) {
-  // console.log('possible reciprocal: ', trusterIds);
-
   const res = trusterIds.reduce((acc, trusterId) => {
     if (isHappens(probability.reciprocity)) {
       acc.push(trusterId);
@@ -176,9 +172,8 @@ function createRelationship (sourceId, targetId, relationship) {
 }
 
 function assignOpinions (topicId, finalTopicId) {
-  const
-    opinionCount = Math.ceil(USER_COUNT / (NODES_PER_OPINION + faker.random.number(200))),
-    userIds = [];
+  const opinionCount = Math.ceil(USER_COUNT / (NODES_PER_OPINION + faker.random.number(200)));
+  const userIds = [];
 
   if (topicId > finalTopicId) {
     return null;
@@ -204,10 +199,8 @@ function assignOpinions (topicId, finalTopicId) {
 }
 
 function createTopic (topicId) {
-  const
-    // title = faker.lorem.words(faker.random.number(6) + 3).join(' '),
-    title = topics[topicId],
-    query = `CREATE (t:Topic {id:${topicId}, text:"${title}", created:0})`;
+  const title = topics[topicId];
+  const query = `CREATE (t:Topic {id:${topicId}, text:"${title}", created:0})`;
 
   return cq.query(query);
 }
@@ -225,10 +218,9 @@ const topics = [
 ];
 
 function createOpinion ({userId, opinionId, topicId}) {
-  const
-    paragraphs = forcem('e' + generateRandomInt(4, 7), generateRandomInt(1, 6)),
-    text = paragraphs.join('\n\n'),
-    query =
+  const paragraphs = forcem('e' + generateRandomInt(4, 7), generateRandomInt(1, 6));
+  const text = paragraphs.join('\n\n');
+  const query =
       `MATCH (a:Person), (t:Topic)
        WHERE a.id=${userId} AND t.id=${topicId}
        CREATE (o:Opinion {id:${opinionId}, text:"${text}", created:0}),
