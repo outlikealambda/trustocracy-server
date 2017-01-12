@@ -1,9 +1,11 @@
-var
-  rp = require('request-promise'),
-  log = require('../../logger'),
-  options = {
-    auth: { username: 'neo4j', password: 'graphdb'}
-  };
+const rp = require('request-promise');
+const log = require('../../logger');
+const options = {
+  auth: {
+    username: 'neo4j',
+    password: 'graphdb'
+  }
+};
 
 function query (cypherQuery) {
   return queryWithParams(cypherQuery, {});
