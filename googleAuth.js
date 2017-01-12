@@ -1,27 +1,24 @@
 'use strict';
 
-const
-  jwt = require('jsonwebtoken'),
-  bb = require('bluebird'),
-  rp = require('request-promise'),
-  _ = require('lodash'),
-  log = require('./logger'),
-  certFetchOptions = {
-    method: 'GET',
-    uri: 'https://www.googleapis.com/oauth2/v1/certs',
-    resolveWithFullResponse: true
-  };
+const jwt = require('jsonwebtoken');
+const bb = require('bluebird');
+const rp = require('request-promise');
+const _ = require('lodash');
+const log = require('./logger');
+const certFetchOptions = {
+  method: 'GET',
+  uri: 'https://www.googleapis.com/oauth2/v1/certs',
+  resolveWithFullResponse: true
+};
 
-let
-  certificateExpiry = null,
-  certificateCache = {},
-  gaApiKey;
+let certificateExpiry = null;
+let certificateCache = {};
+let gaApiKey;
 
 function asyncValidate (idToken, accessToken, callback) {
   getCerts().then(certObj => {
-    let
-      error = null,
-      certs = _.values(certObj);
+    let error = null;
+    let certs = _.values(certObj);
 
     log.info(idToken);
 
@@ -75,15 +72,11 @@ function retrieveContacts (accessToken, oldContacts, nextPageToken) {
       // console.log(res);
       log.info('response', res.connections.length, res.nextPageToken);
 
-      const
-        newContacts = res.connections.map(contacts => Object.assign(
-          {},
-          {
-            names: getNames(contacts),
-            emails: getEmails(contacts)
-          })
-        ),
-        totalContacts = oldContacts.concat(newContacts);
+      const newContacts = res.connections.map(contacts => Object.assign({
+        names: getNames(contacts),
+        emails: getEmails(contacts)
+      }));
+      const totalContacts = oldContacts.concat(newContacts);
 
       // no more contacts, stop
       if (!res.nextPageToken) {
@@ -113,10 +106,9 @@ function getCerts () {
   }
 
   return rp(certFetchOptions).then(res => {
-    const
-      cacheControl = res.headers['cache-control'],
-      cacheAge = !cacheControl ? -1 : extractAge(cacheControl),
-      body = JSON.parse(res.body);
+    const cacheControl = res.headers['cache-control'];
+    const cacheAge = !cacheControl ? -1 : extractAge(cacheControl);
+    const body = JSON.parse(res.body);
 
     // set cache expiry, and save certs for future requests
     certificateExpiry = cacheAge === -1 ? null : new Date(Date.now() + cacheAge);
@@ -127,9 +119,8 @@ function getCerts () {
 }
 
 function extractAge (cacheControl) {
-  const
-    pattern = new RegExp('max-age=([0-9]*)'),
-    matches = pattern.exec(cacheControl);
+  const pattern = new RegExp('max-age=([0-9]*)');
+  const matches = pattern.exec(cacheControl);
 
   return matches.length === 2 ? matches[1] * 1000 : -1;
 }
