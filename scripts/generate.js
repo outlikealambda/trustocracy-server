@@ -144,9 +144,17 @@ function createRelationship (sourceId, targetId, relationship, rank) {
   return cq.query(query).then(() => targetId);
 }
 
+function getTimestampOneYearAgo () {
+  const today = new Date();
+
+  return today.setFullYear(today.getFullYear() - 1);
+}
+
 function assignOpinions (topicId, finalTopicId) {
   const opinionCount = Math.ceil(USER_COUNT / (NODES_PER_OPINION + faker.random.number(USER_COUNT / 20)));
   const userIds = [];
+
+  const topicTimestamp = generateRandomInt(getTimestampOneYearAgo(), Date.now());
 
   log.info('opinionCount: ' + opinionCount);
 
@@ -161,23 +169,25 @@ function assignOpinions (topicId, finalTopicId) {
 
   log.info('users for opinions: ' + userIds);
 
-  return createTopic(topicId)
+  return createTopic(topicId, topicTimestamp)
     .then(() =>
       userIds
         .map(userId => {
           return {
             userId,
             opinionId: idGenerator.nextOpinionId(),
-            topicId: topicId
+            topicId: topicId,
+            created: generateRandomInt(topicTimestamp, Date.now())
           };
         })
         .map(createOpinion))
     .then(() => assignOpinions(topicId + 1, finalTopicId));
 }
 
-function createTopic (topicId) {
+function createTopic (topicId, timestamp) {
   const title = topics[topicId];
-  const query = `CREATE (t:Topic {id:${topicId}, text:"${title}", created:0})`;
+  const query =
+    `CREATE (t:Topic {id:${topicId}, text:"${title}", created:${timestamp}})`;
 
   return cq.query(query);
 }
@@ -194,13 +204,13 @@ const topics = [
   'Housing Prices'
 ];
 
-function createOpinion ({userId, opinionId, topicId}) {
+function createOpinion ({userId, opinionId, topicId, created}) {
   const paragraphs = forcem('e' + generateRandomInt(4, 7), generateRandomInt(1, 6));
   const text = paragraphs.join('\n\n');
   const query =
       `MATCH (a:Person), (t:Topic)
        WHERE a.id=${userId} AND t.id=${topicId}
-       CREATE (o:Opinion {id:${opinionId}, text:"${text}", created:0}),
+       CREATE (o:Opinion {id:${opinionId}, text:"${text}", created:${created}}),
               (a)-[:OPINES]->(o)-[:ADDRESSES]->(t),
               (a)-[:THINKS]->(o)`;
 
