@@ -1,10 +1,9 @@
-const
-  connectionString = 'postgres://trusto:@localhost/trusto',
+const connectionString = 'postgres://trusto:@localhost/trusto';
   // logger = require('../../logger'),
-  humps = require('humps'),
-  pgp = require('pg-promise')(),
-  db = pgp(connectionString),
-  query = require('./query');
+const humps = require('humps');
+const pgp = require('pg-promise')();
+const db = pgp(connectionString);
+const query = require('./query');
 
 function getQuestions (topicId) {
   return db
