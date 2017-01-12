@@ -1,8 +1,7 @@
 'use strict';
 
-const
-  rp = require('request-promise'),
-  validate = require('./validate');
+const rp = require('request-promise');
+const validate = require('./validate');
 
 function fbGetMe (accessToken) {
   return rp(`https://graph.facebook.com/me?access_token=${accessToken}`);
