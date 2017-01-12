@@ -9,14 +9,8 @@ const log = require('../logger');
 const startingUserId = 0;
 const startingTopicId = 0;
 const finalTopicId = 8;
-const USER_COUNT = 3000;
-const NODES_PER_OPINION = 300;
-const explicitProbability = {
-  reciprocity: 0.7,
-  ltOne: () => 1,
-  ltThree: () => 0.9,
-  gteThree: count => Math.pow(0.8, count - 2)
-};
+const USER_COUNT = 100;
+const NODES_PER_OPINION = 30;
 const regularProbability = {
   reciprocity: 0.3,
   ltOne: () => 1,
@@ -25,7 +19,6 @@ const regularProbability = {
 };
 
 createUser(startingUserId, [])
-  .then(() => buildRelationships(startingUserId, 'TRUSTS_EXPLICITLY', explicitProbability))
   .then(() => buildRelationships(startingUserId, 'TRUSTS', regularProbability))
   .then(() => assignOpinions(startingTopicId, finalTopicId))
   .catch(error => {
@@ -70,10 +63,8 @@ function buildRelationships (id, relationship, probs) {
 
   return getTrusters(id, relationship)
     .then(trusterIds => getReciprocalTargets(trusterIds, probs))
-    .map(reciprocalId => createRelationship(id, reciprocalId, relationship))
-    .then(getTrustees(id))
-    .then(existingTrusteeIds => generateNewIds(id, existingTrusteeIds, probs))
-    .map(newTrusteeId => createRelationship(id, newTrusteeId, relationship))
+    .then(reciprocalIds => generateNewIds(id, reciprocalIds, probs))
+    .map((newTrusteeId, rank) => createRelationship(id, newTrusteeId, relationship, rank))
     .then(() => buildRelationships(id + 1, relationship, probs));
 }
 
@@ -87,23 +78,13 @@ function getTrusters (id, relationship) {
   return cq.query(neighborQuery).then(processIds);
 }
 
-function getTrustees (id, relationship) {
-  const relationshipLabel = relationship ? ':' + relationship : '';
-  const neighborQuery =
-    `MATCH (u:Person)-[r${relationshipLabel}]->(p:Person)
-     WHERE u.id=${id}
-     RETURN p`;
-
-  return cq.query(neighborQuery).then(processIds);
-}
-
 function processIds (neoData) {
   const [{data}] = neoData.results;
   return data.map(datum => datum.row[0].id);
 }
 
 function getReciprocalTargets (trusterIds, probability) {
-  const res = trusterIds.reduce((acc, trusterId) => {
+  const reciprocalIds = trusterIds.reduce((acc, trusterId) => {
     if (isHappens(probability.reciprocity)) {
       acc.push(trusterId);
     }
@@ -111,50 +92,41 @@ function getReciprocalTargets (trusterIds, probability) {
     return acc;
   }, []);
 
-  // console.log('reciprocal: ', res);
-
-  return res;
+  return reciprocalIds;
 }
 
 function generateNewIds (sourceId, existingIds, probability) {
-  const ids = [];
-
-  // console.log('sourceId: ' + sourceId + ', reciprocal relationships: ', existingIds);
-
-  while (shouldGenerateNewId(ids.length + existingIds.length, probability)) {
-    ids.push(generateNewId(sourceId, existingIds, ids, USER_COUNT));
+  while (shouldGenerateNewId(existingIds.length, probability)) {
+    existingIds.push(generateNewId(sourceId, existingIds, USER_COUNT));
   }
 
-  // console.log('Creating new relationships for ' + sourceId, ids);
-
-  return ids;
+  return existingIds;
 }
 
-function shouldGenerateNewId (idCount, probability) {
-  if (idCount === 0) {
+function shouldGenerateNewId (relationshipCount, probability) {
+  if (relationshipCount === 0) {
     return isHappens(probability.ltOne());
   }
 
-  if (idCount < 3) {
+  if (relationshipCount < 3) {
     return isHappens(probability.ltThree());
   }
 
-  return isHappens(probability.gteThree(idCount));
+  return isHappens(probability.gteThree(relationshipCount));
 }
 
 // recursively tries until it gets an unused id.
 // there is no guard against this running out of ids, but...
-function generateNewId (sourceId, oldIds, newIds, maxVal) {
+function generateNewId (sourceId, oldIds, maxVal) {
   const newId = generateRandomInt(0, maxVal);
 
-  if (newId !== sourceId &&
-      oldIds.indexOf(newId) === -1 &&
-      newIds.indexOf(newId) === -1) {
+  if (newId !== sourceId && !oldIds.includes(newId)) {
     return newId;
   }
 
   // id already is related, try again.
-  return generateNewId(sourceId, oldIds, newIds, maxVal);
+  log.info('failed with ' + newId);
+  return generateNewId(sourceId, oldIds, maxVal);
 }
 
 // [min, max)
@@ -162,18 +134,21 @@ function generateRandomInt (min, max) {
   return Math.floor(Math.random() * (max - min) + min);
 }
 
-function createRelationship (sourceId, targetId, relationship) {
+function createRelationship (sourceId, targetId, relationship, rank) {
+  const maybeRank = rank || rank === 0 ? `{rank:${rank}}` : '';
   const query =
     `MATCH (a:Person), (b:Person)
      WHERE a.id = ${sourceId} AND b.id = ${targetId}
-     CREATE (a)-[r:${relationship}]->(b)`;
+     CREATE (a)-[r:${relationship}${maybeRank}]->(b)`;
 
   return cq.query(query).then(() => targetId);
 }
 
 function assignOpinions (topicId, finalTopicId) {
-  const opinionCount = Math.ceil(USER_COUNT / (NODES_PER_OPINION + faker.random.number(200)));
+  const opinionCount = Math.ceil(USER_COUNT / (NODES_PER_OPINION + faker.random.number(USER_COUNT / 20)));
   const userIds = [];
+
+  log.info('opinionCount: ' + opinionCount);
 
   if (topicId > finalTopicId) {
     return null;
@@ -181,8 +156,10 @@ function assignOpinions (topicId, finalTopicId) {
 
   // find some users who can have an opinion
   for (let i = 0; i < opinionCount; i++) {
-    userIds.push(generateNewId(-1, userIds, [], USER_COUNT));
+    userIds.push(generateNewId(-1, userIds, USER_COUNT));
   }
+
+  log.info('users for opinions: ' + userIds);
 
   return createTopic(topicId)
     .then(() =>
@@ -226,8 +203,6 @@ function createOpinion ({userId, opinionId, topicId}) {
        CREATE (o:Opinion {id:${opinionId}, text:"${text}", created:0}),
               (a)-[:OPINES]->(o)-[:ADDRESSES]->(t),
               (a)-[:THINKS]->(o)`;
-
-  // console.log('user: ' + userId + ', opinion: ' + opinionId);
 
   return cq.query(query).then(() => opinionId);
 }
