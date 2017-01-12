@@ -1,14 +1,12 @@
 'use strict';
 
-const
-  crypto = require('crypto'),
-  log = require('./logger');
+const crypto = require('crypto');
+const log = require('./logger');
 
 function decodeAndValidate (secret, signedRequest) {
-  const
-    [ encodedSig, payload ] = signedRequest.split('.'),
-    sig = Buffer.from(encodedSig, 'base64').toString('hex'),
-    data = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+  const [ encodedSig, payload ] = signedRequest.split('.');
+  const sig = Buffer.from(encodedSig, 'base64').toString('hex');
+  const data = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
 
   log.info(data);
 
@@ -27,8 +25,7 @@ function decodeAndValidate (secret, signedRequest) {
 }
 
 function generateSignature (algorithm, secret, payload) {
-  const
-    hmac = crypto.createHmac(algorithm, secret);
+  const hmac = crypto.createHmac(algorithm, secret);
 
   return hmac.update(payload).digest('hex');
 }
