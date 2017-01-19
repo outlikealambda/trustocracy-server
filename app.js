@@ -247,6 +247,18 @@ app.get('/api/:userId', function (req, res) {
     });
 });
 
+// insecure user endpoint
+app.get('/api/user/:userId', function (req, res) {
+  const userId = req.params.userId;
+
+  gdb.getUserInfo(userId)
+    .then(userInfo => res.send(userInfo).end())
+    .catch(error => {
+      log.info(error);
+      res.status(404).end('Unknown user');
+    });
+});
+
 // ----------------
 // CLOSED ENDPOINTS
 // ----------------
