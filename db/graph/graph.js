@@ -221,27 +221,18 @@ function getOpinionByUserTopic (userId, topicId) {
     .then(opinion => opinion || models.opinion);
 }
 
-function getNearestOpinions (userId, topicId) {
+function getConnectedOpinions (userId, topicId) {
   log.time('opinions');
-  return cq.query(qb.nearest(userId, topicId))
+  return cq.query(qb.connectedOpinions(userId, topicId))
     .then(neoData => {
       log.timeEnd('opinions');
       return neoData;
     })
-    .then(transformer.nearest);
-}
-
-function getConnectedOpinions (userId, topicId) {
-  return cq.query(qb.connected(userId, topicId))
     .then(transformer.connected);
 }
 
-function getConnectedOpinionsViaPlugin (userId, topicId) {
-  return cq.query(qb.connectedPluginCall(userId, topicId))
-    .then(transformer.connectedPlugin);
-}
-
 function getOpinionInfluence (opinionId) {
+  // TODO: implement this again...
   return cq.query(qb.opinionInfluencePlugin(opinionId))
     .then(transformer.influence);
 }
@@ -362,6 +353,19 @@ const transformer = {
   topics: neoData => extractAllData(neoData, extractTopic),
 
   connected: neoData => extractAllData(neoData, row => {
+    let [friend, author, opinion] = row;
+    if (!Object.keys(opinion).length) {
+      opinion = null;
+    } else {
+      opinion.created = new Date(opinion.created);
+    }
+    if (!Object.keys(author).length) {
+      author = null;
+    }
+    return { friend, author, opinion };
+  }),
+
+  connectedOld: neoData => extractAllData(neoData, row => {
     const [opinion, author, rawConnections, qualifications] = row;
     const paths = rawConnections.map(rawConnection => {
       const [relationship, friend, hops] = rawConnection;
@@ -381,24 +385,6 @@ const transformer = {
         {qualifications}
       ),
       paths: selectBestPaths(paths)
-    };
-  }),
-
-  connectedPlugin: neoData => extractAllData(neoData, row => {
-    const [unscoredPaths, opinion] = row;
-    const paths = !unscoredPaths ? null : unscoredPaths.map(path => {
-      const {hops} = path;
-
-      return Object.assign(
-        {},
-        path,
-        { score: scorePath(hops) + scoreRelationship(path.trustee.relationship) }
-      );
-    });
-
-    return {
-      opinion,
-      paths
     };
   }),
 
@@ -614,9 +600,7 @@ module.exports = {
   createUser,
   createUserWithFacebookId,
   createUserWithGoogleId,
-  getNearestOpinions,
   getConnectedOpinions,
-  getConnectedOpinionsViaPlugin,
   getOpinionInfluence,
   getLocationByUserId,
   getUserByLocation,

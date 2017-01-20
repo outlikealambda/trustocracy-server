@@ -248,14 +248,27 @@ app.get('/api/:userId', function (req, res) {
 });
 
 // insecure user endpoint
-app.get('/api/user/:userId', function (req, res) {
-  const userId = req.params.userId;
-
+app.get('/api/user/:userId', (req, res) => {
+  const { userId } = req.params;
   gdb.getUserInfo(userId)
     .then(userInfo => res.send(userInfo).end())
     .catch(error => {
       log.info(error);
       res.status(404).end('Unknown user');
+    });
+});
+
+// insecure connected opinions for a user/topic
+app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
+  const { topicId, userId } = req.params;
+  gdb.getConnectedOpinions(userId, topicId)
+    .then(connectedOpinions =>
+      res.set({ 'Content-Type': 'application/json' })
+        .send(connectedOpinions)
+        .end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
     });
 });
 
@@ -367,92 +380,18 @@ app.get('/api/secure/gaContacts', (req, res) => {
 });
 
 // returns connected opinions for a user/topic
-app.get('/api/secure/topic/:topicId/connected', function (req, res) {
-  const topicId = req.params.topicId;
+app.get('/api/secure/topic/:topicId/connected', (req, res) => {
+  const { topicId } = req.params;
   const userId = req.userId;
-
-  res.set({ 'Content-Type': 'application/json' });
-
-  gdb.getNearestOpinions(userId, topicId)
-    .then(nearest => res.send(nearest).end());
-});
-
-// returns an array of objects containing both paths to the opinion and the
-// opinion itself:
-// {
-//   opinion: {
-//     text: "the opinion text",
-//     id: 1,
-//     author: {
-//       name: "bob",
-//       id: 1,
-//       relationship: "NONE"
-//     },
-//     influence: 3
-//   },
-//   paths: [
-//     {
-//       trustee: {
-//         name: "Mike",
-//         id: 2,
-//         relationship: "TRUSTS"
-//       },
-//       hops: [
-//         "TRUSTS",
-//         "TRUSTS_EXPLICITLY",
-//         "DELEGATES"
-//       ]
-//     }
-//   ]
-// }
-app.get('/api/secure/topic/:topicId/connected/v2', function (req, res) {
-  const topicId = req.params.topicId;
-  const userId = req.userId;
-
   gdb.getConnectedOpinions(userId, topicId)
-    .then(nearest => res.send(nearest).end())
+    .then(connectedOpinions =>
+      res.set({ 'Content-Type': 'application/json' })
+        .send(connectedOpinions)
+        .end())
     .catch(error => {
       log.info(error);
       res.status(500).end('server error!');
     });
-});
-
-// uses a native Neo4j plugin to retrieve connections, as opposed to a cypher
-// query
-app.get('/api/secure/topic/:topicId/connected/v3', function (req, res) {
-  const topicId = req.params.topicId;
-  const userId = req.userId;
-
-  gdb.getConnectedOpinionsViaPlugin(userId, topicId)
-    .then(nearest => res.send(nearest).end())
-    .catch(error => {
-      log.info(error);
-      res.status(500).end('server error!');
-    });
-});
-
-app.get('/api/secure/topic/:topicId/connected/v4', function (req, res) {
-  const topicId = req.params.topicId;
-  const userId = req.userId;
-
-  bb.join(
-      gdb.getConnectedOpinionsViaPlugin(userId, topicId),
-      gdb.getOpinionsByTopic(topicId),
-      mergeOnId)
-    .then(opinions => res.send(opinions).end())
-    .catch(error => {
-      log.info(error);
-      res.status(500).end('server error!');
-    });
-
-  function mergeOnId (connected, disjoint) {
-    let connectedIds = connected.map(c => c.opinion.id);
-
-    // maybe not the most efficient -- would a foreach with .push be faster?
-    return connected.concat(
-      disjoint.filter(opinion => !connectedIds.includes(opinion.id))
-    );
-  }
 });
 
 // returns the opinion (if it exists) a :userId has written on :topicId

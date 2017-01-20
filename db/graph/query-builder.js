@@ -129,9 +129,7 @@ const queryBuilder = {
             RETURN o, author, COLLECT([type(fr), f, extract(r in rs | type(r))]) as connections, q`;
   },
 
-  connectedPluginCall: (userId, topicId) => `CALL traverse.distance(${userId}, ${topicId}, 5)`,
-
-  opinionInfluencePlugin: opinionId => `CALL influence.opinion(${opinionId}, 5)`,
+  connectedOpinions: (userId, topicId) => `CALL dirty.friend.author.opinion(${userId}, ${topicId})`,
 
   opinionsByIds: ids => {
     const idList = ids.join();
@@ -143,8 +141,7 @@ const queryBuilder = {
 
   // published only
   opinionsByTopic: topicId => {
-    return `MATCH (p:Person) -[${rel.personOpinion.opines}]-> (o:Opinion) --> (t:Topic)
-            WHERE t.id = ${topicId}
+    return `MATCH (p:Person) -[:AUTHORED_${topicId}]-> (o:Opinion) <-[:DISCUSSED_BY]- (t:Topic)
             OPTIONAL MATCH (o) <-- (q:Qualifications)
             RETURN o, p, q`;
   },
@@ -226,13 +223,12 @@ const queryBuilder = {
   },
 
   topic: (topicId) => {
-    return `MATCH (t:Topic)<-[${rel.opinionTopic.addresses}]-(o:Opinion)<-[${rel.personOpinion.opines}]-(:Person)
-            WHERE t.id = ${topicId}
+    return `MATCH (t:Topic)-[:DISCUSSED_BY]->(o:Opinion)<-[:AUTHORED_${topicId}]-(:Person)
             RETURN t, count(o) as opinionCount, max(o.created) as lastUpdated`;
   },
 
   topics: () => {
-    return `MATCH (t:Topic)<-[${rel.opinionTopic.addresses}]-(o:Opinion)<-[${rel.personOpinion.opines}]-(:Person)
+    return `MATCH (t:Topic)-[:DISCUSSED_BY]->(o:Opinion)<-[]-(:Person)
             RETURN t, count(o) as opinionCount, max(o.created) as lastUpdated`;
   },
 
