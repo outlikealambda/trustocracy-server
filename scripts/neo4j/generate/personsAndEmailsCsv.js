@@ -15,7 +15,7 @@ const hasEmailsCsv = fs.createWriteStream(pathToHasEmailsCsv);
 
 personsCsv.write('id:ID(Person),name\n');
 emailsCsv.write('id:ID(Email),email \n');
-hasEmailsCsv.write(':START_ID(Person),:END_ID(Email)');
+hasEmailsCsv.write(':START_ID(Person),:END_ID(Email)\n');
 
 Array(nodeCount)
   .fill(1)

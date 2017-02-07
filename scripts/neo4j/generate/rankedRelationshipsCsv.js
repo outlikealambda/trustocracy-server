@@ -62,6 +62,8 @@ const relationships = (function () {
   function writeToCsv (path, m) {
     const writable = fs.createWriteStream(path);
 
+    writable.write(':START_ID(Person),rank:int,:END_ID(Person)\n');
+
     m.map(row => row.reduce(trueOnly, []))
       .map(shuffleArray) // shuffle to randomize the rank
       .forEach((row, rowIdx) => {

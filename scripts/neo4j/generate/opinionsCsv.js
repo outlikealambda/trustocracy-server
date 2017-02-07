@@ -7,12 +7,14 @@ const pathToOpinionsCsv = process.argv[3] || 'opinions.csv';
 
 const opinionsCsv = fs.createWriteStream(pathToOpinionsCsv);
 
+opinionsCsv.write('id:ID(Opinion),created:long,text\n');
+
 Array(parseInt(nodeCount)).fill(0)
   .forEach((ignored, index) => {
     const text = forcem('e' + generateRandomInt(4, 7), generateRandomInt(1, 6)).join('\n\n');
     const created = generateRandomInt(getTimestampOneYearAgo(), Date.now());
 
-    opinionsCsv.write(`${index},${created},'${text}'\n`);
+    opinionsCsv.write(`${index},${created},"${text}"\n`);
   });
 
 // [min, max)
