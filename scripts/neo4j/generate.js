@@ -8,9 +8,9 @@ const cq = require('../db/graph/cypher-query');
 const log = require('../logger');
 const startingUserId = 0;
 const startingTopicId = 0;
-const finalTopicId = 8;
-const USER_COUNT = 100;
-const NODES_PER_OPINION = 30;
+const finalTopicId = 0;
+const USER_COUNT = 10000;
+const NODES_PER_OPINION = 300;
 const regularProbability = {
   reciprocity: 0.3,
   ltOne: () => 1,
@@ -19,7 +19,7 @@ const regularProbability = {
 };
 
 createUser(startingUserId, [])
-  .then(() => buildRelationships(startingUserId, 'TRUSTS', regularProbability))
+  .then(() => buildRelationships(startingUserId, 'RANKED', regularProbability))
   .then(() => assignOpinions(startingTopicId, finalTopicId))
   .catch(error => {
     log.info(error);
@@ -60,7 +60,7 @@ function buildRelationships (id, relationship, probs) {
 
   logCreation(id, `users' ${relationship} relationships`);
 
-  return getTrusters(id, relationship)
+  return getRanked(id, relationship)
     .then(trusterIds => getReciprocalTargets(trusterIds, probs))
     .then(reciprocalIds => generateNewIds(id, reciprocalIds, probs))
     .map((newTrusteeId, rank) => createRelationship(id, newTrusteeId, relationship, rank))
@@ -68,7 +68,7 @@ function buildRelationships (id, relationship, probs) {
 }
 
 // returns [{id, name}]
-function getTrusters (id, relationship) {
+function getRanked (id, relationship) {
   const neighborQuery =
     `MATCH (u:Person)<-[r:${relationship}]-(p:Person)
      WHERE u.id=${id}
@@ -124,7 +124,7 @@ function generateNewId (sourceId, oldIds, maxVal) {
   }
 
   // id already is related, try again.
-  log.info('failed with ' + newId);
+  // log.info('failed with ' + newId);
   return generateNewId(sourceId, oldIds, maxVal);
 }
 
@@ -169,8 +169,8 @@ function assignOpinions (topicId, finalTopicId) {
   log.info('users for opinions: ' + userIds);
 
   return createTopic(topicId, topicTimestamp)
-    .then(() =>
-      userIds
+    .then(() => {
+      const opinions = userIds
         .map(userId => {
           return {
             userId,
@@ -178,9 +178,19 @@ function assignOpinions (topicId, finalTopicId) {
             topicId: topicId,
             created: generateRandomInt(topicTimestamp, Date.now())
           };
-        })
-        .map(createOpinion))
+        });
+
+      return oneAtATime(createOpinion, opinions, 0);
+    })
     .then(() => assignOpinions(topicId + 1, finalTopicId));
+}
+
+function oneAtATime (fnPromise, items, index) {
+  if (index >= items.length) {
+    return;
+  }
+
+  return fnPromise(items[index]).then(() => oneAtATime(fnPromise, items, index + 1));
 }
 
 function createTopic (topicId, timestamp) {
@@ -210,10 +220,11 @@ function createOpinion ({userId, opinionId, topicId, created}) {
       `MATCH (a:Person), (t:Topic)
        WHERE a.id=${userId} AND t.id=${topicId}
        CREATE (o:Opinion {id:${opinionId}, text:"${text}", created:${created}}),
-              (a)-[:OPINES]->(o)-[:ADDRESSES]->(t),
-              (a)-[:THINKS]->(o)`;
+              (o)-[:ADDRESSES]->(t)`;
 
-  return cq.query(query).then(() => opinionId);
+  return cq.query(query)
+    .then(() => cq.query(`CALL clean.opinion.set(${userId}, ${opinionId}, ${topicId})`))
+    .then(() => opinionId);
 }
 
 function isHappens (probability) {
