@@ -1,4 +1,4 @@
-:START_ID(Person),rank:int,:END_ID(Person)
+:START_ID(Person),rank:long,:END_ID(Person)
 0, 0, 8062
 1, 0, 9311
 1, 1, 7045
