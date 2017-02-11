@@ -10,7 +10,6 @@ const frontend = require('./frontend');
 const gdb = require('./db/graph/graph');
 const rdb = require('./db/relational/relational');
 const log = require('./logger');
-const bb = require('bluebird');
 
   // init first for env variables
 const app = express();
@@ -265,6 +264,20 @@ app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
     .then(connectedOpinions =>
       res.set({ 'Content-Type': 'application/json' })
         .send(connectedOpinions)
+        .end())
+    .catch(error => {
+      log.info(error);
+      res.status(500).end('server error!');
+    });
+});
+
+// insecure connected opinions for a user/topic
+app.get('/api/topic/:topicId/influence/:userId', (req, res) => {
+  const { topicId, userId } = req.params;
+  gdb.getInfluence(userId, topicId)
+    .then(influence =>
+      res.set({ 'Content-Type': 'application/json' })
+        .send(influence)
         .end())
     .catch(error => {
       log.info(error);

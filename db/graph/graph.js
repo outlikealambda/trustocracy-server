@@ -228,13 +228,45 @@ function getConnectedOpinions (userId, topicId) {
       log.timeEnd('opinions');
       return neoData;
     })
-    .then(transformer.connected);
+    .then(transformer.connected)
+    .then(connections => {
+      // group by author...
+      let authorsById = {};
+      let authorIds = [];
+      for (const { friend, author, opinion } of connections) {
+        let existingAuthor = authorsById[author.id];
+        if (existingAuthor) {
+          existingAuthor.friends.push(friend);
+        } else {
+          existingAuthor = { author, opinion, friends: [ friend ] };
+          authorsById[author.id] = existingAuthor;
+          authorIds.push(author.id);
+        }
+      }
+
+      // get influence...
+      return Promise.all(
+        authorIds.map(authorId =>
+          getInfluence(authorId, topicId)
+            .then(result => {
+              const authorEntry = authorsById[authorId];
+              authorEntry.influence = result.influence;
+              return authorEntry;
+            })));
+    });
 }
 
-function getOpinionInfluence (opinionId) {
-  // TODO: implement this again...
-  return cq.query(qb.opinionInfluencePlugin(opinionId))
+function getInfluence (userId, topicId) {
+  return cq.query(qb.measureInfluence(userId, topicId))
     .then(transformer.influence);
+}
+
+function setTarget (userId, targetId, topicId) {
+  return cq.query(qb.setTarget(userId, targetId, topicId));
+}
+
+function clearTarget (userId, topicId) {
+  return cq.query(qb.clearTarget(userId, topicId));
 }
 
 function getTopic (id) {
@@ -389,8 +421,7 @@ const transformer = {
   }),
 
   influence: neoData => extractFirstData(neoData, row => {
-    const [,, influence] = row;
-
+    const [influence] = row;
     return {influence};
   }),
 
@@ -600,8 +631,12 @@ module.exports = {
   createUser,
   createUserWithFacebookId,
   createUserWithGoogleId,
+
   getConnectedOpinions,
-  getOpinionInfluence,
+  getInfluence,
+  setTarget,
+  clearTarget,
+
   getLocationByUserId,
   getUserByLocation,
   getOpinionById,

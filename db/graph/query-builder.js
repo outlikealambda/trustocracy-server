@@ -129,7 +129,15 @@ const queryBuilder = {
             RETURN o, author, COLLECT([type(fr), f, extract(r in rs | type(r))]) as connections, q`;
   },
 
-  connectedOpinions: (userId, topicId) => `CALL dirty.friend.author.opinion(${userId}, ${topicId})`,
+  connectedOpinions: (userId, topicId) => `CALL friend.author.opinion(${userId}, ${topicId})`,
+
+  measureInfluence: (userId, topicId) => `CALL measure.influence(${userId}, ${topicId})`,
+
+  setRanked: (userId, targetIds) => `CALL dirty.ranked.set(${userId}, ${targetIds})`,
+
+  setTarget: (userId, targetId, topicId) => `CALL dirty.target.set(${userId}, ${targetId}, ${topicId})`,
+
+  clearTarget: (userId, topicId) => `CALL dirty.target.clear(${userId}, ${topicId})`,
 
   opinionsByIds: ids => {
     const idList = ids.join();
