@@ -231,16 +231,22 @@ function getConnectedOpinions (userId, topicId) {
     .then(transformer.connected)
     .then(connections => {
       // group by author...
-      let authorsById = {};
-      let authorIds = [];
+      const authorsById = {};
+      const authorIds = [];
+      const authorlessFriends = [];
+
       for (const { friend, author, opinion } of connections) {
-        let existingAuthor = authorsById[author.id];
-        if (existingAuthor) {
-          existingAuthor.friends.push(friend);
+        if (!author) {
+          authorlessFriends.push(friend);
         } else {
-          existingAuthor = { author, opinion, friends: [ friend ] };
-          authorsById[author.id] = existingAuthor;
-          authorIds.push(author.id);
+          let existingAuthor = authorsById[author.id];
+          if (existingAuthor) {
+            existingAuthor.friends.push(friend);
+          } else {
+            existingAuthor = { author, opinion, friends: [ friend ] };
+            authorsById[author.id] = existingAuthor;
+            authorIds.push(author.id);
+          }
         }
       }
 
@@ -252,7 +258,10 @@ function getConnectedOpinions (userId, topicId) {
               const authorEntry = authorsById[authorId];
               authorEntry.influence = result.influence;
               return authorEntry;
-            })));
+            })))
+      .then(results => results.concat({
+        friends: authorlessFriends
+      }));
     });
 }
 
