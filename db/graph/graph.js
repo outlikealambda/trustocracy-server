@@ -205,13 +205,13 @@ function getOpinionById (opinionId) {
     .then(({ author, opinion, topic }) =>
       getInfluence(author.id, topic.id)
         .then(({ influence }) => {
-          author.influence = influence;
           topic.created = new Date(topic.created);
           return {
             author,
             topic,
             id: opinion.id,
             created: new Date(opinion.created),
+            influence,
             text: opinion.text
           };
         }));
@@ -229,18 +229,15 @@ function getOpinionsByTopic (topicId) {
       Promise.all(
         opinions.map(({ author, opinion }) =>
           getInfluence(author.id, topicId)
-            .then(({ influence }) => {
-              console.log('author', author.id, 'influence', influence);
-              author.influence = influence;
-              return {
-                author,
+            .then(({ influence }) => (
+              { author,
                 id: opinion.id,
-                created: new Date(opinion.created)
-              };
-            }))))
+                created: new Date(opinion.created),
+                influence
+              })))))
     .then(opinionsWithInfluence =>
       opinionsWithInfluence.sort((opinion1, opinion2) =>
-        opinion2.author.influence - opinion1.author.influence));
+        opinion2.influence - opinion1.influence));
 }
 
 // returns the most recently saved opinion for a user/topic
@@ -314,7 +311,14 @@ function getTopic (id) {
 
 function getTopics () {
   return cq.query(qb.topics())
-    .then(transformer.topics);
+    .then(transformer.topics)
+    .then(topics =>
+      topics.sort((topic1, topic2) =>
+        topic1.lastUpdated > topic2.lastUpdated
+          ? -1
+          : topic1.lastUpdated < topic2.lastUpdated
+            ? 1
+            : 0));
 }
 
 // given a user and a list of emails, connect the user to any existing
@@ -596,13 +600,13 @@ function extractUserOpinion (row) {
 
 function extractTopic (row) {
   const [topic, opinionCount, lastUpdated] = row;
-
+  topic.created = new Date(topic.created);
   return Object.assign(
     {},
     topic,
     {
       opinionCount,
-      lastUpdated
+      lastUpdated: new Date(lastUpdated)
     }
   );
 }
@@ -665,7 +669,6 @@ module.exports = {
   createUserWithGoogleId,
 
   getConnectedOpinions,
-  getInfluence,
   setTarget,
   clearTarget,
 

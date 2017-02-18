@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 
 const idGenerator = require('./db/graph/id-generator');
-const frontend = require('./frontend');
+// const frontend = require('./frontend');
 const gdb = require('./db/graph/graph');
 const rdb = require('./db/relational/relational');
 const log = require('./logger');
@@ -37,24 +37,13 @@ app.use(cookieParser());
 // returns a single opinion
 app.get('/api/opinion/:opinionId', (req, res) => {
   const {opinionId} = req.params;
-
   log.info('opinion endpoint', opinionId);
-
   gdb.getOpinionById(opinionId)
-    .then(opinion => res.send(opinion).end());
-});
-
-app.get('/api/opinion/:opinionId/influence', (req, res) => {
-  const {opinionId} = req.params;
-
-  setTimeout(() => {
-    gdb.getOpinionInfluence(opinionId)
-      .then(influence => res.send(influence).end())
-      .catch(err => {
-        log.info('error getting influence!', err);
-        res.status(500).send('could not get influence');
-      });
-  }, 100);
+    .then(opinion => res.send(opinion).end())
+    .catch(err => {
+      log.error('error getting opinion', opinionId, err);
+      res.status(500).send('could not get opinion');
+    });
 });
 
 app.get('/api/opinion/:opinionId/metrics', (req, res) => {
@@ -81,13 +70,12 @@ app.get('/api/opinions/:ids', (req, res) => {
 });
 
 // returns all opinions for a given :topicId
-app.get('/api/topic/:topicId/opinion', (req, res) => {
+app.get('/api/topic/:topicId/opinions', (req, res) => {
   const {topicId} = req.params;
-
   gdb.getOpinionsByTopic(topicId)
     .then(opinions => res.send(opinions).end())
     .catch(err => {
-      log.info('error getting opinions for topic', topicId, err);
+      log.error('error getting opinions for topic', topicId, err);
       res.status(500).send('could not get opinions');
     });
 });
@@ -95,24 +83,19 @@ app.get('/api/topic/:topicId/opinion', (req, res) => {
 // return basic info for :topicId
 app.get('/api/topic/:topicId', (req, res) => {
   const {topicId} = req.params;
-
   gdb.getTopic(topicId)
-    .then(topic => res.send(topic).end());
+    .then(topic => res.send(topic).end())
+    .catch(err => {
+      log.error('error getting topic', topicId, err);
+      res.status(500).send('could not get topic');
+    });
 });
 
 // return a list of all questions for a topic
-app.get('/api/topic/:topicId/question', (req, res) => {
+app.get('/api/topic/:topicId/questions', (req, res) => {
   const {topicId} = req.params;
 
   rdb.getQuestions(topicId)
-    .then(data => res.send(data).end());
-});
-
-// return a list of multiple choice questions for a topic
-app.get('/api/topic/:topicId/question/pickone', (req, res) => {
-  const {topicId} = req.params;
-
-  rdb.getPickOneQuestions(topicId)
     .then(data => res.send(data).end());
 });
 
@@ -268,20 +251,6 @@ app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
     .then(connectedOpinions =>
       res.set({ 'Content-Type': 'application/json' })
         .send(connectedOpinions)
-        .end())
-    .catch(error => {
-      log.info(error);
-      res.status(500).end('server error!');
-    });
-});
-
-// insecure connected opinions for a user/topic
-app.get('/api/topic/:topicId/influence/:userId', (req, res) => {
-  const { topicId, userId } = req.params;
-  gdb.getInfluence(userId, topicId)
-    .then(influence =>
-      res.set({ 'Content-Type': 'application/json' })
-        .send(influence)
         .end())
     .catch(error => {
       log.info(error);
@@ -528,9 +497,11 @@ app.get('/api/secure/delegate/lookup', (req, res) => {
     });
 });
 
+/*
 app.get('/*', function (req, res) {
   frontend.proxyGet(req.params['0']).pipe(res);
 });
+*/
 
 // Start server
 idGenerator.init().then(() => {
