@@ -154,10 +154,10 @@ const queryBuilder = {
   },
 
   opinionById: opinionId => {
-    return `MATCH (p:Person) --> (o:Opinion)
+    return `MATCH (p:Person) --> (o:Opinion) <-[:DISCUSSED_BY]- (t:Topic)
             WHERE o.id = ${opinionId}
             OPTIONAL MATCH (o) <-[:QUALIFIES]- (q:Qualifications)
-            RETURN o, p, q`;
+            RETURN o, p, t, q`;
   },
 
   opinionDraftByUserTopic: (userId, topicId) => {

@@ -201,7 +201,20 @@ function getUserByLocation (locationId) {
 
 function getOpinionById (opinionId) {
   return cq.query(qb.opinionById(opinionId))
-    .then(transformer.opinion);
+    .then(transformer.opinion)
+    .then(({ author, opinion, topic }) =>
+      getInfluence(author.id, topic.id)
+        .then(({ influence }) => {
+          author.influence = influence;
+          topic.created = new Date(topic.created);
+          return {
+            author,
+            topic,
+            id: opinion.id,
+            created: new Date(opinion.created),
+            text: opinion.text
+          };
+        }));
 }
 
 function getOpinionsByIds (ids) {
@@ -577,8 +590,8 @@ function extractUserLocation (row) {
 
 // Record specific extractions
 function extractUserOpinion (row) {
-  const [opinion, author] = row;
-  return { author, opinion };
+  const [opinion, author, topic] = row;
+  return { author, opinion, topic };
 }
 
 function extractTopic (row) {
