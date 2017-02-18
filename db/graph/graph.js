@@ -211,7 +211,23 @@ function getOpinionsByIds (ids) {
 
 function getOpinionsByTopic (topicId) {
   return cq.query(qb.opinionsByTopic(topicId))
-    .then(transformer.opinionsByTopic);
+    .then(transformer.opinionsByTopic)
+    .then(opinions =>
+      Promise.all(
+        opinions.map(({ author, opinion }) =>
+          getInfluence(author.id, topicId)
+            .then(({ influence }) => {
+              console.log('author', author.id, 'influence', influence);
+              author.influence = influence;
+              return {
+                author,
+                id: opinion.id,
+                created: new Date(opinion.created)
+              };
+            }))))
+    .then(opinionsWithInfluence =>
+      opinionsWithInfluence.sort((opinion1, opinion2) =>
+        opinion2.author.influence - opinion1.author.influence));
 }
 
 // returns the most recently saved opinion for a user/topic
@@ -561,14 +577,8 @@ function extractUserLocation (row) {
 
 // Record specific extractions
 function extractUserOpinion (row) {
-  const [opinion, author, qualifications] = row;
-
-  return Object.assign(
-    {},
-    opinion,
-    { author },
-    { qualifications }
-  );
+  const [opinion, author] = row;
+  return { author, opinion };
 }
 
 function extractTopic (row) {

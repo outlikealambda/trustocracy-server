@@ -85,7 +85,11 @@ app.get('/api/topic/:topicId/opinion', (req, res) => {
   const {topicId} = req.params;
 
   gdb.getOpinionsByTopic(topicId)
-    .then(opinions => res.send(opinions).end());
+    .then(opinions => res.send(opinions).end())
+    .catch(err => {
+      log.info('error getting opinions for topic', topicId, err);
+      res.status(500).send('could not get opinions');
+    });
 });
 
 // return basic info for :topicId

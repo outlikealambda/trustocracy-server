@@ -149,9 +149,8 @@ const queryBuilder = {
 
   // published only
   opinionsByTopic: topicId => {
-    return `MATCH (p:Person) -[:AUTHORED_${topicId}]-> (o:Opinion) <-[:DISCUSSED_BY]- (t:Topic)
-            OPTIONAL MATCH (o) <-- (q:Qualifications)
-            RETURN o, p, q`;
+    return `MATCH (p:Person) -[:AUTHORED_${topicId}]-> (o:Opinion)
+            RETURN o, p`;
   },
 
   opinionById: opinionId => {
