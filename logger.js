@@ -3,6 +3,8 @@
 
 const info = console.log;
 
+const error = console.error;
+
 const time = console.time;
 
 const timeEnd = console.timeEnd;
@@ -16,6 +18,7 @@ function promise (msg) {
 
 module.exports = {
   info,
+  error,
   time,
   timeEnd,
   promise
