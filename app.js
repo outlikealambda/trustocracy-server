@@ -259,7 +259,8 @@ app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
 });
 
 // insecure set target for a topic/user/target
-app.get('/api/topic/:topicId/user/:userId/target/:targetId', (req, res) => {
+// post, but there's no body
+app.post('/api/topic/:topicId/user/:userId/target/:targetId', (req, res) => {
   const { userId, targetId, topicId } = req.params;
 
   gdb.setTarget(userId, targetId, topicId)
