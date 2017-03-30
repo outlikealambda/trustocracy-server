@@ -258,6 +258,20 @@ app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
     });
 });
 
+// insecure set target for a topic/user/target
+app.get('/api/topic/:topicId/user/:userId/target/:targetId', (req, res) => {
+  const { userId, targetId, topicId } = req.params;
+
+  gdb.setTarget(userId, targetId, topicId)
+    .then(() => {
+      res.sendStatus(200);
+    })
+    .catch(err => {
+      console.log(err);
+      res.sendStatus(500);
+    });
+});
+
 // ----------------
 // CLOSED ENDPOINTS
 // ----------------
