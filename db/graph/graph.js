@@ -217,6 +217,11 @@ function getOpinionById (opinionId) {
         }));
 }
 
+function getAuthoredOpinion (authorId, topicId) {
+  return cq.query(qb.authoredOpinion(authorId, topicId))
+    .then(neoData => extractFirstData(neoData, row => row[0]));
+}
+
 function getOpinionsByIds (ids) {
   return cq.query(qb.opinionsByIds(ids))
     .then(transformer.opinionsByIds);
@@ -225,6 +230,10 @@ function getOpinionsByIds (ids) {
 function getOpinionsByTopic (topicId) {
   return cq.query(qb.opinionsByTopic(topicId))
     .then(transformer.opinionsByTopic)
+    .then(opinions => {
+      log.info(`found ${opinions.length} opinions for topic ${topicId}`);
+      return opinions;
+    })
     .then(opinions =>
       Promise.all(
         opinions.map(({ author, opinion }) =>
@@ -247,11 +256,69 @@ function getOpinionByUserTopic (userId, topicId) {
     .then(opinion => opinion || models.opinion);
 }
 
+// Queries for friend + author combos, and then attaches influence
+// and opinion in separate queries.
+// Inefficient for now, but opinion and influence should both be straightforward
+// to cache when optimization is needed.
 function getConnectedOpinions (userId, topicId) {
-  log.time('opinions');
+  log.time('connected opinions time');
+  return cq.query(qb.friendsAuthors(userId, topicId))
+    .then(neoData => {
+      log.timeEnd('connected opinions time');
+      return neoData;
+    })
+    .then(transformer.friendsAuthors)
+    .then(fas => {
+      // group by author...
+      const authorsById = {};
+      const authorIds = [];
+      const authorlessFriends = [];
+
+      for (const { friend, author } of fas) {
+        if (!author) {
+          authorlessFriends.push(friend);
+        } else {
+          let existingAuthor = authorsById[author.id];
+          if (existingAuthor) {
+            existingAuthor.friends.push(friend);
+          } else {
+            existingAuthor = { author, friends: [ friend ] };
+            authorsById[author.id] = existingAuthor;
+            authorIds.push(author.id);
+          }
+        }
+      }
+
+      log.info(`found ${authorIds.length} authors`);
+
+      // Get influence and opinion and attach to result
+      return Promise.all(
+        authorIds.map(authorId =>
+          Promise.all([
+            getInfluence(authorId, topicId).then(r => r.influence),
+            getAuthoredOpinion(authorId, topicId)
+          ])
+          .then(results => {
+            const [influence, opinion] = results;
+
+            return Object.assign(
+              { influence, opinion },
+              authorsById[authorId]
+            );
+          })
+        )
+      )
+      .then(results => results.concat({
+        friends: authorlessFriends
+      }));
+    });
+}
+
+function getConnectedOpinionsOld (userId, topicId) {
+  log.time('connected opinions time');
   return cq.query(qb.connectedOpinions(userId, topicId))
     .then(neoData => {
-      log.timeEnd('opinions');
+      log.timeEnd('connected opinions time');
       return neoData;
     })
     .then(transformer.connected)
@@ -275,6 +342,8 @@ function getConnectedOpinions (userId, topicId) {
           }
         }
       }
+
+      log.info(`found ${authorIds.length} authors`);
 
       // get influence...
       return Promise.all(
@@ -439,6 +508,12 @@ const transformer = {
     return { friend, author, opinion };
   }),
 
+  friendsAuthors: neoData => extractAllData(neoData, row => {
+    let [friend, author] = row;
+
+    return { friend, author };
+  }),
+
   connectedOld: neoData => extractAllData(neoData, row => {
     const [opinion, author, rawConnections, qualifications] = row;
     const paths = rawConnections.map(rawConnection => {
@@ -464,6 +539,7 @@ const transformer = {
 
   influence: neoData => extractFirstData(neoData, row => {
     const [influence] = row;
+    // log.info('influence', influence);
     return {influence};
   }),
 
@@ -669,6 +745,7 @@ module.exports = {
   createUserWithGoogleId,
 
   getConnectedOpinions,
+  getConnectedOpinionsOld,
   setTarget,
   clearTarget,
 

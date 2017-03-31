@@ -37,7 +37,7 @@ app.use(cookieParser());
 // returns a single opinion
 app.get('/api/opinion/:opinionId', (req, res) => {
   const {opinionId} = req.params;
-  log.info('opinion endpoint', opinionId);
+  // log.info('opinion endpoint', opinionId);
   gdb.getOpinionById(opinionId)
     .then(opinion => res.send(opinion).end())
     .catch(err => {
@@ -62,10 +62,10 @@ app.get('/api/opinion/:opinionId/metrics', (req, res) => {
 app.get('/api/opinions/:ids', (req, res) => {
   const opinionIds = req.params.ids.split(',');
 
-  log.info(opinionIds);
+  // log.info(opinionIds);
 
   gdb.getOpinionsByIds(opinionIds)
-    .then(log.promise('opinions:'))
+    // .then(log.promise('opinions:'))
     .then(opinions => res.send(opinions).end());
 });
 
@@ -73,6 +73,7 @@ app.get('/api/opinions/:ids', (req, res) => {
 app.get('/api/topic/:topicId/opinions', (req, res) => {
   const {topicId} = req.params;
   gdb.getOpinionsByTopic(topicId)
+    // .then(log.promise('hello opinions'))
     .then(opinions => res.send(opinions).end())
     .catch(err => {
       log.error('error getting opinions for topic', topicId, err);
