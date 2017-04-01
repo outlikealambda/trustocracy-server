@@ -289,6 +289,9 @@ function getConnectedOpinions (userId, topicId) {
         }
       }
 
+      // sort friends by rank
+      authorIds.forEach(aid => authorsById[aid].friends.sort((a, b) => a.rank - b.rank));
+
       log.info(`found ${authorIds.length} authors`);
 
       // Get influence and opinion and attach to result
