@@ -245,6 +245,18 @@ app.get('/api/user/:userId', (req, res) => {
     });
 });
 
+app.get('/api/topic/:topicId/user/:userId/influence', (req, res) => {
+  const { topicId, userId } = req.params;
+  gdb.getInfluence(userId, topicId)
+    .then(result => {
+      res.send(result);
+    })
+    .catch(error => {
+      log.error(error);
+      res.status(500).end('server error!');
+    });
+});
+
 // insecure connected opinions for a user/topic
 app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
   const { topicId, userId } = req.params;

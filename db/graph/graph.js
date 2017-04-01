@@ -756,6 +756,8 @@ module.exports = {
   getOpinionsByTopic,
   getOpinionByUserTopic, // returns most recently edited opinion
 
+  getInfluence,
+
   getTrusteeByEmail,
 
   saveOpinion, // saves, and returns with saved id attached
