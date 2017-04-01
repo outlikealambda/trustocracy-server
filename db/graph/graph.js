@@ -292,6 +292,9 @@ function getConnectedOpinions (userId, topicId) {
       // sort friends by rank
       authorIds.forEach(aid => authorsById[aid].friends.sort((a, b) => a.rank - b.rank));
 
+      // sort author groups by highest ranked friend
+      authorIds.sort((a, b) => getFirstFriendRank(authorsById[a]) - getFirstFriendRank(authorsById[b]));
+
       log.info(`found ${authorIds.length} authors`);
 
       // Get influence and opinion and attach to result
@@ -315,6 +318,13 @@ function getConnectedOpinions (userId, topicId) {
         friends: authorlessFriends
       }));
     });
+}
+
+function getFirstFriendRank (authorObj) {
+  const friends = authorObj.friends || [];
+  const first = friends[0] || {};
+
+  return first.rank || 1000;
 }
 
 function getConnectedOpinionsOld (userId, topicId) {
