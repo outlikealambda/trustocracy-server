@@ -289,10 +289,15 @@ function getConnectedOpinions (userId, topicId) {
         }
       }
 
-      // sort friends by rank
-      authorIds.forEach(aid => authorsById[aid].friends.sort((a, b) => a.rank - b.rank));
+      // Sort friends by rank
+      authorIds.forEach(aid => authorsById[aid].friends.sort((a, b) => {
+        if (a.isRanked && !b.isRanked) return -1;
+        if (b.isRanked && !a.isRanked) return 1;
+        return a.rank - b.rank;
+      }));
 
-      // sort author groups by highest ranked friend
+      // Sort author groups by highest ranked friend.
+      // Assumes friends have already been sorted.
       authorIds.sort((a, b) => getFirstFriendRank(authorsById[a]) - getFirstFriendRank(authorsById[b]));
 
       log.info(`found ${authorIds.length} authors`);
