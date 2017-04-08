@@ -142,7 +142,7 @@ const queryBuilder = {
   clearTarget: (userId, topicId) => `CALL dirty.target.clear(${userId}, ${topicId})`,
 
   authoredOpinion: (authorId, topicId) =>
-    `MATCH (author:Person) -[:AUTHORED_${topicId}]-> (o:Opinion) RETURN o`,
+    `MATCH (author:Person) -[:AUTHORED_${topicId}]-> (o:Opinion) WHERE author.id=${authorId} RETURN o`,
 
   opinionsByIds: ids => {
     const idList = ids.join();
