@@ -245,6 +245,7 @@ app.get('/api/user/:userId', (req, res) => {
     });
 });
 
+// insecure user influence endpoint
 app.get('/api/topic/:topicId/user/:userId/influence', (req, res) => {
   const { topicId, userId } = req.params;
   gdb.getInfluence(userId, topicId)
@@ -280,6 +281,18 @@ app.post('/api/topic/:topicId/user/:userId/target/:targetId', (req, res) => {
     .then(() => {
       res.sendStatus(200);
     })
+    .catch(err => {
+      console.log(err);
+      res.sendStatus(500);
+    });
+});
+
+// insecure clear target for a topic/user
+app.delete('/api/topic/:topicId/user/:userId', (req, res) => {
+  const {userId, topicId} = req.params;
+
+  gdb.clearTarget(userId, topicId)
+    .then(() => res.sendStatus(200))
     .catch(err => {
       console.log(err);
       res.sendStatus(500);
