@@ -219,7 +219,7 @@ function getOpinionById (opinionId) {
 
 function getAuthoredOpinion (authorId, topicId) {
   return cq.query(qb.authoredOpinion(authorId, topicId))
-    .then(neoData => extractFirstData(neoData, row => row[0]));
+    .then(extractFirstRow(row => row[0]));
 }
 
 function getOpinionsByIds (ids) {
@@ -466,16 +466,9 @@ function updateLocation (locationId, name, country, city, postal) {
 const transformer = {
   user: extractFirstResult,
 
-  trustee: neoData => extractFirstData(neoData, row => {
-    const [user] = row;
+  trustee: extractFirstRow(extractUser),
 
-    return {
-      name: user.name,
-      id: user.id
-    };
-  }),
-
-  userInfo: neoData => extractFirstData(neoData, row => {
+  userInfo: extractFirstRow(row => {
     log.info(row);
 
     const [user, emails, neighbors] = row;
@@ -500,25 +493,25 @@ const transformer = {
     };
   }),
 
-  basicUser: neoData => extractFirstData(neoData, extractUser),
+  basicUser: extractFirstRow(extractUser),
 
-  userInfoWithLocation: neoData => extractFirstData(neoData, extractFullUser),
+  userInfoWithLocation: extractFirstRow(extractFullUser),
 
-  emails: neoData => extractAllData(neoData, row => row[0].email),
+  emails: extractAllRows(row => row[0].email),
 
-  location: neoData => extractAllData(neoData, extractUserLocation),
+  location: extractAllRows(extractUserLocation),
 
-  opinion: neoData => extractFirstData(neoData, extractUserOpinion),
+  opinion: extractFirstRow(extractUserOpinion),
 
-  opinionsByIds: neoData => extractAllData(neoData, extractUserOpinion),
+  opinionsByIds: extractAllRows(extractUserOpinion),
 
-  opinionsByTopic: neoData => extractAllData(neoData, extractUserOpinion),
+  opinionsByTopic: extractAllRows(extractUserOpinion),
 
-  topic: neoData => extractFirstData(neoData, extractTopic),
+  topic: extractFirstRow(extractTopic),
 
-  topics: neoData => extractAllData(neoData, extractTopic),
+  topics: extractAllRows(extractTopic),
 
-  connected: neoData => extractAllData(neoData, row => {
+  connected: extractAllRows(row => {
     let [friend, author, opinion] = row;
     if (!Object.keys(opinion).length) {
       opinion = null;
@@ -531,18 +524,11 @@ const transformer = {
     return { friend, author, opinion };
   }),
 
-  friends: neoData => extractAllData(neoData, row => {
-    const [friend] = row;
-    return friend;
-  }),
+  friends: extractAllRows(([friend]) => friend),
 
-  friendsAuthors: neoData => extractAllData(neoData, row => {
-    let [friend, author] = row;
+  friendsAuthors: extractAllRows(([friend, author]) => ({friend, author})),
 
-    return { friend, author };
-  }),
-
-  connectedOld: neoData => extractAllData(neoData, row => {
+  connectedOld: extractAllRows(row => {
     const [opinion, author, rawConnections, qualifications] = row;
     const paths = rawConnections.map(rawConnection => {
       const [relationship, friend, hops] = rawConnection;
@@ -565,14 +551,10 @@ const transformer = {
     };
   }),
 
-  influence: neoData => extractFirstData(neoData, row => {
-    const [influence] = row;
-    // log.info('influence', influence);
-    return {influence};
-  }),
+  influence: extractFirstRow(([influence]) => ({influence})),
 
   nearest: neoData => {
-    const scoredPaths = extractAllData(neoData, row => {
+    const scoredPaths = extractAllRows(row => {
       const [friendRelationship, friend, path, opiner, opinion] = row;
       const score = scorePath(path);
 
@@ -588,7 +570,7 @@ const transformer = {
         score,
         key: friend.id + ':' + opiner.id
       };
-    });
+    })(neoData);
 
     return {
       paths: getUniqueStartFinishCombos(scoredPaths)
@@ -626,22 +608,25 @@ data generally comes back in the form:
   ]
 }
  */
-function extractAllData (neoData, mapFn = (row => row), defaultResult = []) {
-  const [{data}] = neoData.results;
 
-  return noResults(neoData) ? defaultResult : data.map(datum => mapFn(datum.row));
+function extractAllRows (mapFn = (row => row), defaultResult = []) {
+  return neoData => {
+    const [{data}] = neoData.results;
+
+    return noResults(neoData) ? defaultResult : data.map(datum => mapFn(datum.row));
+  };
 }
 
 /**
  * returns the result of mapFn applied to the first element of the results
  */
-function extractFirstData (neoData, mapFn, defaultResult) {
-  return extractAllData(neoData, mapFn, [])[0] || defaultResult;
+function extractFirstRow (mapFn, defaultResult = {}) {
+  return neoData => extractAllRows(mapFn, defaultResult)(neoData)[0];
 }
 
 // pulls out the first item from the first row of results
 function extractFirstResult (neoData) {
-  return extractFirstData(neoData, row => row[0], {});
+  return extractFirstRow(row => row[0], {})(neoData);
 }
 
 // null checks a couple of places in the results data
@@ -662,38 +647,37 @@ function noResults (neoData) {
   // has results
   return false;
 }
+
 function extractFullUser (row) {
   const [user, emails] = row;
   log.info('graph.js eFU row', row);
 
-  return (
-    { name: user.name,
-      id: user.id,
-      emails: emails
-    }
-  );
+  return {
+    name: user.name,
+    id: user.id,
+    emails: emails
+  };
 }
 
 function extractUser (row) {
   const [user] = row;
 
-  return (
-    {name: user.name,
-      id: user.id}
-  );
+  return {
+    name: user.name,
+    id: user.id
+  };
 }
 
 function extractUserLocation (row) {
   const [location, country, city, postal] = row;
 
-  return (
-    { id: location.id,
-      name: location.name,
-      country: country.name,
-      city: city.name,
-      postal: postal.name
-    }
-  );
+  return {
+    id: location.id,
+    name: location.name,
+    country: country.name,
+    city: city.name,
+    postal: postal.name
+  };
 }
 
 // Record specific extractions

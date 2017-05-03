@@ -266,8 +266,7 @@ app.get('/api/user/:userId/friends', (req, res) => {
       log.error(error);
       res.sendStatus(500);
     });
-
-})
+});
 
 // insecure connected opinions for a user/topic
 app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
