@@ -257,7 +257,7 @@ function getOpinionByUserTopic (userId, topicId) {
 }
 
 // Queries for friend + author combos, and then attaches influence
-// and opinion in separate queries.
+// and opinion with separate queries.
 // Inefficient for now, but opinion and influence should both be straightforward
 // to cache when optimization is needed.
 function getConnectedOpinions (userId, topicId) {
@@ -323,6 +323,11 @@ function getConnectedOpinions (userId, topicId) {
         friends: authorlessFriends
       }));
     });
+}
+
+function getFriends (userId) {
+  return cq.query(qb.friends(userId))
+    .then(transformer.friends);
 }
 
 function getFirstFriendRank (authorObj) {
@@ -524,6 +529,11 @@ const transformer = {
       author = null;
     }
     return { friend, author, opinion };
+  }),
+
+  friends: neoData => extractAllData(neoData, row => {
+    const [friend] = row;
+    return friend;
   }),
 
   friendsAuthors: neoData => extractAllData(neoData, row => {
@@ -762,6 +772,7 @@ module.exports = {
   createUserWithFacebookId,
   createUserWithGoogleId,
 
+  getFriends,
   getConnectedOpinions,
   getConnectedOpinionsOld,
   setTarget,

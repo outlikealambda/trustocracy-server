@@ -258,6 +258,17 @@ app.get('/api/topic/:topicId/user/:userId/influence', (req, res) => {
     });
 });
 
+app.get('/api/user/:userId/friends', (req, res) => {
+  const {userId} = req.params;
+  gdb.getFriends(userId)
+    .then(result => res.send(result))
+    .catch(error => {
+      log.error(error);
+      res.sendStatus(500);
+    });
+
+})
+
 // insecure connected opinions for a user/topic
 app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
   const { topicId, userId } = req.params;

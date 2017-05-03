@@ -133,6 +133,8 @@ const queryBuilder = {
 
   friendsAuthors: (userId, topicId) => `CALL friend.author(${userId}, ${topicId})`,
 
+  friends: userId => `CALL friend(${userId})`,
+
   measureInfluence: (userId, topicId) => `CALL measure.influence(${userId}, ${topicId})`,
 
   setRanked: (userId, targetIds) => `CALL dirty.ranked.set(${userId}, ${targetIds})`,
