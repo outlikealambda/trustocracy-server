@@ -3,6 +3,7 @@
 const {reject} = require('bluebird');
 const cq = require('./cypher-query');
 const qb = require('./query-builder');
+const transformer = require('./transformer');
 const idGenerator = require('./id-generator');
 const log = require('../../logger');
 const models = require('./models');
@@ -219,7 +220,7 @@ function getOpinionById (opinionId) {
 
 function getAuthoredOpinion (authorId, topicId) {
   return cq.query(qb.authoredOpinion(authorId, topicId))
-    .then(extractFirstRow(row => row[0]));
+    .then(transformer.authoredOpinion);
 }
 
 function getOpinionsByIds (ids) {
@@ -337,52 +338,6 @@ function getFirstFriendRank (authorObj) {
   return first.rank || 1000;
 }
 
-function getConnectedOpinionsOld (userId, topicId) {
-  log.time('connected opinions time');
-  return cq.query(qb.connectedOpinions(userId, topicId))
-    .then(neoData => {
-      log.timeEnd('connected opinions time');
-      return neoData;
-    })
-    .then(transformer.connected)
-    .then(connections => {
-      // group by author...
-      const authorsById = {};
-      const authorIds = [];
-      const authorlessFriends = [];
-
-      for (const { friend, author, opinion } of connections) {
-        if (!author) {
-          authorlessFriends.push(friend);
-        } else {
-          let existingAuthor = authorsById[author.id];
-          if (existingAuthor) {
-            existingAuthor.friends.push(friend);
-          } else {
-            existingAuthor = { author, opinion, friends: [ friend ] };
-            authorsById[author.id] = existingAuthor;
-            authorIds.push(author.id);
-          }
-        }
-      }
-
-      log.info(`found ${authorIds.length} authors`);
-
-      // get influence...
-      return Promise.all(
-        authorIds.map(authorId =>
-          getInfluence(authorId, topicId)
-            .then(result => {
-              const authorEntry = authorsById[authorId];
-              authorEntry.influence = result.influence;
-              return authorEntry;
-            })))
-      .then(results => results.concat({
-        friends: authorlessFriends
-      }));
-    });
-}
-
 function getInfluence (userId, topicId) {
   return cq.query(qb.measureInfluence(userId, topicId))
     .then(transformer.influence);
@@ -463,288 +418,6 @@ function updateLocation (locationId, name, country, city, postal) {
     .then(() => ({name, id: locationId, country, city, postal}));
 }
 
-const transformer = {
-  user: extractFirstResult,
-
-  trustee: extractFirstRow(extractUser),
-
-  userInfo: extractFirstRow(row => {
-    log.info(row);
-
-    const [user, emails, neighbors] = row;
-    const trustees =
-        neighbors
-          // if we have no friends, OPTIONAL MATCH returns an empty neighbor
-          // so filter those out here
-          .filter(neighbor => neighbor.friend)
-          .map(neighbor => {
-            return {
-              name: neighbor.friend.name,
-              id: neighbor.friend.id,
-              relationship: neighbor.relationship
-            };
-          });
-
-    return {
-      name: user.name,
-      id: user.id,
-      trustees: trustees,
-      emails: emails
-    };
-  }),
-
-  basicUser: extractFirstRow(extractUser),
-
-  userInfoWithLocation: extractFirstRow(extractFullUser),
-
-  emails: extractAllRows(row => row[0].email),
-
-  location: extractAllRows(extractUserLocation),
-
-  opinion: extractFirstRow(extractUserOpinion),
-
-  opinionsByIds: extractAllRows(extractUserOpinion),
-
-  opinionsByTopic: extractAllRows(extractUserOpinion),
-
-  topic: extractFirstRow(extractTopic),
-
-  topics: extractAllRows(extractTopic),
-
-  connected: extractAllRows(row => {
-    let [friend, author, opinion] = row;
-    if (!Object.keys(opinion).length) {
-      opinion = null;
-    } else {
-      opinion.created = new Date(opinion.created);
-    }
-    if (!Object.keys(author).length) {
-      author = null;
-    }
-    return { friend, author, opinion };
-  }),
-
-  friends: extractAllRows(([friend]) => friend),
-
-  friendsAuthors: extractAllRows(([friend, author]) => ({friend, author})),
-
-  connectedOld: extractAllRows(row => {
-    const [opinion, author, rawConnections, qualifications] = row;
-    const paths = rawConnections.map(rawConnection => {
-      const [relationship, friend, hops] = rawConnection;
-
-      return {
-        trustee: Object.assign({}, friend, {relationship: relationship}),
-        hops,
-        score: scorePath(hops)
-      };
-    });
-
-    return {
-      opinion: Object.assign(
-        {},
-        opinion,
-        {author},
-        {qualifications}
-      ),
-      paths: selectBestPaths(paths)
-    };
-  }),
-
-  influence: extractFirstRow(([influence]) => ({influence})),
-
-  nearest: neoData => {
-    const scoredPaths = extractAllRows(row => {
-      const [friendRelationship, friend, path, opiner, opinion] = row;
-      const score = scorePath(path);
-
-      return {
-        friend: Object.assign(
-          {},
-          friend,
-          { relationship: friendRelationship }
-        ),
-        path,
-        opiner,
-        opinion: opinion.id,
-        score,
-        key: friend.id + ':' + opiner.id
-      };
-    })(neoData);
-
-    return {
-      paths: getUniqueStartFinishCombos(scoredPaths)
-    };
-  }
-};
-
-/**
- * returns a list of mapFn applied to each row of data
- * mapFn: maps over each data[i].row
- * defaultResult: returned if there are no results
-data generally comes back in the form:
-
-{
-  results: [
-    {
-      data: [
-        {
-          row: [
-            {
-              id: someId,
-              text: "or whatever fields"
-            }
-          ]
-        }, {
-          row: [
-            {
-              id: 2,
-              text: "or whatever fields"
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
- */
-
-function extractAllRows (mapFn = (row => row), defaultResult = []) {
-  return neoData => {
-    const [{data}] = neoData.results;
-
-    return noResults(neoData) ? defaultResult : data.map(datum => mapFn(datum.row));
-  };
-}
-
-/**
- * returns the result of mapFn applied to the first element of the results
- */
-function extractFirstRow (mapFn, defaultResult = {}) {
-  return neoData => extractAllRows(mapFn, defaultResult)(neoData)[0];
-}
-
-// pulls out the first item from the first row of results
-function extractFirstResult (neoData) {
-  return extractFirstRow(row => row[0], {})(neoData);
-}
-
-// null checks a couple of places in the results data
-// see @extractAllData for the neo4j data structure
-function noResults (neoData) {
-  const [result] = neoData.results;
-
-  if (!result) {
-    return true;
-  }
-
-  const {data: [firstRow]} = result;
-
-  if (!firstRow) {
-    return true;
-  }
-
-  // has results
-  return false;
-}
-
-function extractFullUser (row) {
-  const [user, emails] = row;
-  log.info('graph.js eFU row', row);
-
-  return {
-    name: user.name,
-    id: user.id,
-    emails: emails
-  };
-}
-
-function extractUser (row) {
-  const [user] = row;
-
-  return {
-    name: user.name,
-    id: user.id
-  };
-}
-
-function extractUserLocation (row) {
-  const [location, country, city, postal] = row;
-
-  return {
-    id: location.id,
-    name: location.name,
-    country: country.name,
-    city: city.name,
-    postal: postal.name
-  };
-}
-
-// Record specific extractions
-function extractUserOpinion (row) {
-  const [opinion, author, topic] = row;
-  return { author, opinion, topic };
-}
-
-function extractTopic (row) {
-  const [topic, opinionCount, lastUpdated] = row;
-  topic.created = new Date(topic.created);
-  return Object.assign(
-    {},
-    topic,
-    {
-      opinionCount,
-      lastUpdated: new Date(lastUpdated)
-    }
-  );
-}
-
-function getUniqueStartFinishCombos (scoredPaths) {
-  const map = new Map();
-
-  for (let sp of scoredPaths) {
-    const existingPath = map.get(sp.key);
-
-    if (!existingPath || sp.score < existingPath.score) {
-      map.set(sp.key, sp);
-    }
-  }
-
-  return [...map.values()];
-}
-
-// since there may be multiple paths between a trustee and an opinion
-// only show the one with the lowest score
-function selectBestPaths (paths) {
-  const lowestScores = new Map();
-
-  for (let path of paths) {
-    const currentLowest = lowestScores.get(path.trustee.name);
-
-    if (!currentLowest || path.score < currentLowest.score) {
-      lowestScores.set(path.trustee.name, path);
-    }
-  }
-
-  return [...lowestScores.values()];
-}
-
-function scorePath (path) {
-  return path.reduce((score, hop) => score + scoreRelationship(hop), 0);
-}
-
-function scoreRelationship (relationship) {
-  switch (relationship) {
-    case 'TRUSTS_EXPLICITLY':
-      return 1;
-    case 'TRUSTS':
-      return 2;
-    default:
-      log.info(`What kind of path is this: ${relationship}?`);
-      return 0;
-  }
-}
-
 module.exports = {
   getUser,
   getUserInfo,
@@ -758,7 +431,6 @@ module.exports = {
 
   getFriends,
   getConnectedOpinions,
-  getConnectedOpinionsOld,
   setTarget,
   clearTarget,
 
