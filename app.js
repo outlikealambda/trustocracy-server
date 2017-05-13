@@ -234,7 +234,7 @@ app.get('/api/:userId', function (req, res) {
     });
 });
 
-// insecure user endpoint
+// unsecured user endpoint
 app.get('/api/user/:userId', (req, res) => {
   const { userId } = req.params;
   gdb.getUserInfo(userId)
@@ -245,7 +245,7 @@ app.get('/api/user/:userId', (req, res) => {
     });
 });
 
-// insecure user influence endpoint
+// unsecured user influence endpoint
 app.get('/api/topic/:topicId/user/:userId/influence', (req, res) => {
   const { topicId, userId } = req.params;
   gdb.getInfluence(userId, topicId)
@@ -268,7 +268,49 @@ app.get('/api/user/:userId/friends', (req, res) => {
     });
 });
 
-// insecure connected opinions for a user/topic
+// unsecured add to pool for a user/email
+app.get('/api/user/:userId/pool', (req, res) => {
+  gdb.getPooled(req.params.userId)
+    .then(friends => {
+      res.send(friends);
+    })
+    .catch(e => {
+      log.error(e);
+      res.sendStatus(500);
+    });
+});
+
+app.post('/api/user/:userId/pool', (req, res) => {
+  const {body: {email}, params: {userId}} = req;
+
+  gdb.addToPool(userId, email)
+    .then(friend => {
+      if (!friend.name) {
+        res.sendStatus(404);
+      } else {
+        res.send(friend).end();
+      }
+    })
+    .catch(e => {
+      log.error(e);
+      res.sendStatus(500);
+    });
+});
+
+app.delete('/api/user/:userId/pool/:friendId', (req, res) => {
+  const {userId, friendId} = req.params;
+
+  gdb.removeFromPool(userId, friendId)
+    .then(() => {
+      res.sendStatus(200);
+    })
+    .catch(e => {
+      log.error(e);
+      res.sendStatus(500);
+    });
+});
+
+// unsecured connected opinions for a user/topic
 app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
   const { topicId, userId } = req.params;
   gdb.getConnectedOpinions(userId, topicId)
@@ -282,7 +324,7 @@ app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
     });
 });
 
-// insecure set target for a topic/user/target
+// unsecured set target for a topic/user/target
 // post, but there's no body
 app.post('/api/topic/:topicId/user/:userId/target/:targetId', (req, res) => {
   const { userId, targetId, topicId } = req.params;
@@ -297,7 +339,7 @@ app.post('/api/topic/:topicId/user/:userId/target/:targetId', (req, res) => {
     });
 });
 
-// insecure clear target for a topic/user
+// unsecured clear target for a topic/user
 app.delete('/api/topic/:topicId/user/:userId', (req, res) => {
   const {userId, topicId} = req.params;
 

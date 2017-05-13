@@ -41,7 +41,11 @@ function extractAllRows (mapFn = (row => row), defaultResult = []) {
  * returns the result of mapFn applied to the first element of the results
  */
 function extractFirstRow (mapFn, defaultResult = {}) {
-  return neoData => extractAllRows(mapFn, defaultResult)(neoData)[0];
+  return neoData => {
+    const allRows = extractAllRows(mapFn)(neoData);
+
+    return allRows.length ? allRows[0] : defaultResult;
+  };
 }
 
 // pulls out the first item from the first row of results
@@ -55,6 +59,7 @@ function noResults (neoData) {
   const [result] = neoData.results;
 
   if (!result) {
+    // this should never hit
     return true;
   }
 
@@ -121,9 +126,11 @@ const extractor = {
 };
 
 module.exports = {
-  user: extractFirstResult,
 
-  trustee: extractFirstRow(extractor.user),
+  // All same?
+  basicUser: extractFirstResult,
+  trustee: extractFirstResult,
+  user: extractFirstResult,
 
   userInfo: extractFirstRow(row => {
     const [user, emails, neighbors] = row;
@@ -147,8 +154,6 @@ module.exports = {
       emails: emails
     };
   }),
-
-  basicUser: extractFirstRow(extractor.user),
 
   userInfoWithLocation: extractFirstRow(extractor.fullUser),
 

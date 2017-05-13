@@ -246,18 +246,35 @@ const queryBuilder = {
             RETURN t, count(o) as opinionCount, max(o.created) as lastUpdated`;
   },
 
-  addDelegate: (userId, delegate) => {
-    return `MATCH (u:Person), (d:Person)
-            WHERE u.id = ${userId} AND d.id = ${delegate.id}
-            CREATE (u)-[:${delegate.relationship}]->(d)`;
-  },
+  addDelegate: (userId, delegate) =>
+    createUserEdge(delegate.relationship)(userId, delegate.id),
 
-  removeDelegate: (userId, delegate) => {
-    return `MATCH (u:Person)-[r]->(d:Person)
-            WHERE u.id = ${userId} AND d.id = ${delegate.id}
-            DELETE r`;
-  }
+  removeDelegate: (userId, delegate) =>
+    deleteUserEdge(delegate.relationship)(userId, delegate.id),
+
+  addToPool: createUserEdge('KNOWS'),
+
+  removeFromPool: deleteUserEdge('KNOWS'),
+
+  getPooled: userId =>
+    `MATCH (u:Person)-[:KNOWS]->(f:Person)
+     WHERE u.id=${userId}
+     RETURN f`
 };
+
+function createUserEdge (relationshipName) {
+  return (fromUserId, toUserId) =>
+    `MATCH (from:Person), (to:Person)
+     WHERE from.id = ${fromUserId} AND to.id=${toUserId}
+     CREATE (from)-[:${relationshipName}]->(to)`;
+}
+
+function deleteUserEdge (relationshipName) {
+  return (fromUserId, toUserId) =>
+    `MATCH (from:Person)-[r:${relationshipName}]->(to:Person)
+     WHERE from.id = ${fromUserId} AND to.id=${toUserId}
+     DELETE r`;
+}
 
 function wrapEmailsInQuotes (emails) {
   return emails.map(email => `'${email}'`);

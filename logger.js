@@ -11,7 +11,7 @@ const timeEnd = console.timeEnd;
 
 function promise (msg) {
   return function (data) {
-    console.log(msg, data);
+    console.log(msg, JSON.stringify(data, null, 2));
     return data;
   };
 }

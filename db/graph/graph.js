@@ -146,7 +146,7 @@ function createUserWithGoogleId (gaUserId, name, email) {
 // TODO: handle topic specific relationships
 function delegate (userId, delegate) {
   return cq.query(qb.removeDelegate(userId, delegate))
-    .then(() => cq.query(qb.addDelegate(userId, delegate)))
+    .then(() => cq.query(qb.addDelegate(userId, delegate.id)))
     .then(() => delegate);
 }
 
@@ -351,6 +351,32 @@ function clearTarget (userId, topicId) {
   return cq.query(qb.clearTarget(userId, topicId));
 }
 
+// empty object when no user?
+// TODO: Haskell/Clojure/Ocaml/Something-functional
+function addToPool (userId, friendEmail) {
+  return cq.query(qb.userByEmail(friendEmail))
+    .then(transformer.user)
+    .then(friend => {
+      if (!friend.name) {
+        // no user with that email
+        return {};
+      }
+
+      return cq.query(qb.addToPool(userId, friend.id))
+        // return the added friend
+        .then(() => friend);
+    });
+}
+
+function removeFromPool (userId, friendId) {
+  return cq.query(qb.removeFromPool(userId, friendId));
+}
+
+function getPooled (userId) {
+  return cq.query(qb.getPooled(userId))
+    .then(transformer.friends);
+}
+
 function getTopic (id) {
   return cq.query(qb.topic(id))
     .then(transformer.topic);
@@ -433,6 +459,9 @@ module.exports = {
   getConnectedOpinions,
   setTarget,
   clearTarget,
+  addToPool,
+  removeFromPool,
+  getPooled,
 
   getLocationByUserId,
   getUserByLocation,
