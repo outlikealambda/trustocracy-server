@@ -335,7 +335,7 @@ function getFirstFriendRank (authorObj) {
   const friends = authorObj.friends || [];
   const first = friends[0] || {};
 
-  return first.rank || 1000;
+  return first.rank || first.rank === 0 ? first.rank : 1000;
 }
 
 function getInfluence (userId, topicId) {
