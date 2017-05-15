@@ -310,6 +310,17 @@ app.delete('/api/user/:userId/pool/:friendId', (req, res) => {
     });
 });
 
+app.post('/api/user/:userId/delegates', (req, res) => {
+  const {params: {userId}, body: {delegates}} = req;
+
+  gdb.rankDelegates(userId, delegates)
+    .then(() => res.sendStatus(200))
+    .catch(e => {
+      log.error(e);
+      res.sendStatus(500);
+    });
+});
+
 // unsecured connected opinions for a user/topic
 app.get('/api/topic/:topicId/connected/:userId', (req, res) => {
   const { topicId, userId } = req.params;
@@ -589,12 +600,6 @@ app.get('/api/secure/delegate/lookup', (req, res) => {
       trustee ? res.send(trustee).end() : res.status(404).end();
     });
 });
-
-/*
-app.get('/*', function (req, res) {
-  frontend.proxyGet(req.params['0']).pipe(res);
-});
-*/
 
 // Start server
 idGenerator.init().then(() => {

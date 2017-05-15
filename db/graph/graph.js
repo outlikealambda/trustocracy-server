@@ -377,6 +377,12 @@ function getPooled (userId) {
     .then(transformer.friends);
 }
 
+function rankDelegates (userId, rankedDelegates) {
+  const delegateIds = rankedDelegates.map(({id}) => id);
+
+  return cq.query(qb.rankDelegates(userId, delegateIds));
+}
+
 function getTopic (id) {
   return cq.query(qb.topic(id))
     .then(transformer.topic);
@@ -462,6 +468,7 @@ module.exports = {
   addToPool,
   removeFromPool,
   getPooled,
+  rankDelegates,
 
   getLocationByUserId,
   getUserByLocation,

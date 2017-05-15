@@ -259,7 +259,10 @@ const queryBuilder = {
   getPooled: userId =>
     `MATCH (u:Person)-[:KNOWS]->(f:Person)
      WHERE u.id=${userId}
-     RETURN f`
+     RETURN f`,
+
+  rankDelegates: (userId, delegateIds) =>
+    `CALL dirty.ranked.set(${userId}, ${JSON.stringify(delegateIds)})`
 };
 
 function createUserEdge (relationshipName) {
