@@ -6,9 +6,9 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 
 const idGenerator = require('./db/graph/id-generator');
-// const frontend = require('./frontend');
-const gdb = require('./db/graph/graph');
-const rdb = require('./db/relational/relational');
+const comboDb = require('./db/combo.js');
+const gdb = comboDb.gdb;
+const rdb = comboDb.rdb;
 const log = require('./logger');
 
   // init first for env variables
@@ -62,22 +62,29 @@ app.get('/api/opinion/:opinionId/metrics', (req, res) => {
 app.get('/api/opinions/:ids', (req, res) => {
   const opinionIds = req.params.ids.split(',');
 
-  // log.info(opinionIds);
-
   gdb.getOpinionsByIds(opinionIds)
-    // .then(log.promise('opinions:'))
     .then(opinions => res.send(opinions).end());
 });
 
 // returns all opinions for a given :topicId
 app.get('/api/topic/:topicId/opinions', (req, res) => {
   const {topicId} = req.params;
-  gdb.getOpinionsByTopic(topicId)
-    // .then(log.promise('hello opinions'))
+  comboDb.opinions(topicId)
     .then(opinions => res.send(opinions).end())
     .catch(err => {
       log.error('error getting opinions for topic', topicId, err);
       res.status(500).send('could not get opinions');
+    });
+});
+
+app.get('/api/topic/:topicId/prompts', (req, res) => {
+  const {topicId} = req.params;
+
+  rdb.prompts(topicId)
+    .then(prompts => res.send(prompts))
+    .catch(err => {
+      log.error('error getting prompts; topic: ', topicId, err);
+      res.status(500).send('could not get prompts');
     });
 });
 
