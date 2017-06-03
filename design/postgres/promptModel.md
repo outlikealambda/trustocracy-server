@@ -18,7 +18,52 @@
 - Since we'll be doing lots of calculations on large sets of records, composite indices will be handy.
 - Figuring out how to write the above
 
-### Model
+## Model, v2
+
+
+### Answer
+Either a MULTIPLE_CHOICE answer or a SCALAR answer
+
+- id: serial
+- prompt_id: FK prompt(id)
+- opinion_id: int (neo4j FK)
+- selected: option.id (FK if not null)
+- value: float
+
+Scalar Topic Summary:
+```
+SELECT prompt.id, avg(answer.value)
+  FROM prompt
+  JOIN answer ON prompt.id = answer.prompt_id
+  WHERE prompt.type = 'SCALAR'
+    AND prompt.topic_id = $<topicId>
+  GROUP BY prompt.id
+```
+
+Multiple Choice Topic Summary
+```
+SELECT prompt.id, answer.selected, count(*)
+  FROM prompt
+  JOIN answer ON prompt.id = answer.prompt_id
+  WHERE prompt.type = 'MULTIPLE_CHOICE'
+    AND prompt.topic_id = $<topicId>
+  GROUP BY prompt.id, answer.selected
+  ORDER BY prompt.id, answer.selected
+```
+
+### Prompt
+- id: serial
+- topic_id: int (neo4j FK)
+- text: text
+- text_short: varchar(140)
+
+### Option
+- id: serial
+- prompt_id: FK prompt(id)
+- sort_order: int
+- text
+
+## Model, v1
 
 **Answer**
 
