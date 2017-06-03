@@ -1,39 +1,39 @@
-const connectionString = 'postgres://trusto:@localhost/trusto';
+const connectionString = 'postgres://trusto:@localhost/trusto_2';
 const logger = require('../../logger');
 const db = require('pg-promise')()(connectionString);
 
-const question =
-  `CREATE TABLE IF NOT EXISTS question (
+const prompt =
+  `CREATE TABLE IF NOT EXISTS prompt (
     id serial PRIMARY KEY,
     topic_id int,
-    prompt text,
-    prompt_short varchar(140)
+    type varchar(31),
+    text text,
+    text_short varchar(140)
   )`;
 
 const option =
   `CREATE TABLE IF NOT EXISTS option (
     id serial PRIMARY KEY,
-    description varchar(140),
+    prompt_id int,
     sort_order int,
-    question_id int,
-    FOREIGN KEY (question_id) REFERENCES question(id),
-    UNIQUE(question_id, sort_order)
+    text varchar(140),
+    FOREIGN KEY (prompt_id) REFERENCES prompt(id),
+    UNIQUE(prompt_id, sort_order)
   )`;
 
 const answer =
   `CREATE TABLE IF NOT EXISTS answer (
     id serial PRIMARY KEY,
-    topic_id int,
     opinion_id int,
-    user_id int,
-    question_id int,
-    option_id int,
+    prompt_id int,
+    selected int,
+    value float,
     timestamp timestamptz default current_timestamp,
-    FOREIGN KEY (question_id) REFERENCES question(id),
-    FOREIGN KEY (option_id) REFERENCES option(id)
+    FOREIGN KEY (prompt_id) REFERENCES prompt(id),
+    UNIQUE(opinion_id, prompt_id)
   )`;
 
-db.none(question)
+db.none(prompt)
   .then(() => db.none(option))
   .then(() => db.none(answer))
   .then(() => {
