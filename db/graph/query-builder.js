@@ -160,6 +160,12 @@ const queryBuilder = {
             RETURN o, p`;
   },
 
+  opinionIdsByTopic: topicId => {
+    return `MATCH (t:Topic)-[:DISCUSSED_BY]->(o:Opinion)
+            WHERE t.id = ${topicId}
+            RETURN o.id`;
+  },
+
   opinionById: opinionId => {
     return `MATCH (p:Person) --> (o:Opinion) <-[:DISCUSSED_BY]- (t:Topic)
             WHERE o.id = ${opinionId}

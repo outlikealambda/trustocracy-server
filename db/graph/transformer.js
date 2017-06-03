@@ -169,6 +169,8 @@ module.exports = {
 
   opinionsByTopic: extractAllRows(extractor.userOpinion),
 
+  opinionIdsByTopic: extractAllRows(row => row[0]),
+
   topic: extractFirstRow(extractor.topic),
 
   topics: extractAllRows(extractor.topic),

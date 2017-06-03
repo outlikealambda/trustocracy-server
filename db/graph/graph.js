@@ -250,6 +250,11 @@ function getOpinionsByTopic (topicId) {
         opinion2.influence - opinion1.influence));
 }
 
+function getOpinionIdsByTopic (topicId) {
+  return cq.query(qb.opinionIdsByTopic(topicId))
+    .then(transformer.opinionIdsByTopic);
+}
+
 // returns the most recently saved opinion for a user/topic
 function getOpinionByUserTopic (userId, topicId) {
   return cq.query(qb.opinionDraftByUserTopic(userId, topicId))
@@ -475,6 +480,7 @@ module.exports = {
   getOpinionById,
   getOpinionsByIds,
   getOpinionsByTopic,
+  getOpinionIdsByTopic, // for prompts in postgres
   getOpinionByUserTopic, // returns most recently edited opinion
 
   getInfluence,
