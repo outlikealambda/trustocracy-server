@@ -44,8 +44,7 @@ const answer = {
       .where('prompt.topic_id', topicId)
       .orderBy('answer.opinion_id')
       .orderBy('answer.prompt_id')
-      .then(humps.camelizeKeys)
-      .then(log.promise('answers!')),
+      .then(humps.camelizeKeys),
 
   byUser: (topicId, opinionId, userId) =>
     db.any(query.answer.byUser, {topicId, opinionId, userId})
