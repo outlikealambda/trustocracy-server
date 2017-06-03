@@ -4,6 +4,8 @@ const humps = require('humps');
 const pgp = require('pg-promise')();
 const db = pgp(connectionString);
 const query = require('./query');
+const knex = require('./rdb.js');
+const log = require('../../logger.js');
 
 function getQuestions (topicId) {
   return db
@@ -34,6 +36,16 @@ const answer = {
 
   remove: answerId =>
     db.any(query.answer.remove, {answerId}),
+
+  all: topicId =>
+    knex.select('answer.opinion_id', 'answer.prompt_id', 'answer.value', 'answer.selected')
+      .from('answer')
+      .innerJoin('prompt', 'answer.prompt_id', 'prompt.id')
+      .where('prompt.topic_id', topicId)
+      .orderBy('answer.opinion_id')
+      .orderBy('answer.prompt_id')
+      .then(humps.camelizeKeys)
+      .then(log.promise('answers!')),
 
   byUser: (topicId, opinionId, userId) =>
     db.any(query.answer.byUser, {topicId, opinionId, userId})

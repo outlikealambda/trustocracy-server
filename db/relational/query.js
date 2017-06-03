@@ -37,6 +37,14 @@ module.exports = {
       `DELETE FROM answer
        WHERE answer.id = $<answerId>`,
 
+    // unused, just for reference
+    all:
+      `SELECT answer.opinion_id, prompt.id, answer.value, answer.selected
+        FROM prompt
+        JOIN answer ON prompt.id = answer.prompt_id
+          WHERE prompt.topic_id = $<topicId>
+        ORDER BY answer.opinion_id, prompt.id`,
+
     byUser:
       `SELECT * FROM answer
         WHERE answer.topic_id = $<topicId>

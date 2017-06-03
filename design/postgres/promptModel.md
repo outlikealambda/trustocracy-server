@@ -11,6 +11,16 @@
   - show pro-trump opinions
   - sort by opinion persuasiveness
 
+## Specific Queries
+
+1. Give me all the opinions and their answers for a topic
+  - group all answers by opinionId
+
+2. Summarize the answers for a topic
+  - group all answers by opinionId
+  - weight by influence
+  - aggregate stats
+
 ## Implementation
 
 ### Use a relational database
@@ -19,7 +29,6 @@
 - Figuring out how to write the above
 
 ## Model, v2
-
 
 ### Answer
 Either a MULTIPLE_CHOICE answer or a SCALAR answer
@@ -30,25 +39,14 @@ Either a MULTIPLE_CHOICE answer or a SCALAR answer
 - selected: option.id (FK if not null)
 - value: float
 
-Scalar Topic Summary:
+All Topic Answers
 ```
-SELECT prompt.id, avg(answer.value)
+SELECT answer.opinion_id, prompt.id, answer.value, answer.selected
   FROM prompt
   JOIN answer ON prompt.id = answer.prompt_id
   WHERE prompt.type = 'SCALAR'
     AND prompt.topic_id = $<topicId>
-  GROUP BY prompt.id
-```
-
-Multiple Choice Topic Summary
-```
-SELECT prompt.id, answer.selected, count(*)
-  FROM prompt
-  JOIN answer ON prompt.id = answer.prompt_id
-  WHERE prompt.type = 'MULTIPLE_CHOICE'
-    AND prompt.topic_id = $<topicId>
-  GROUP BY prompt.id, answer.selected
-  ORDER BY prompt.id, answer.selected
+  ORDER BY answer.opinion_id, prompt.id
 ```
 
 ### Prompt
