@@ -24,7 +24,10 @@ function getRateQuestionIds () {
     .then(questions => questions.map(q => q.id));
 }
 
-const prompts = topicId =>
+/**
+ * Map of promptId => prompt
+ */
+const promptsMap = topicId =>
   knex.select('prompt.id', 'prompt.type', 'prompt.text', 'prompt.text_short', 'option.sort_order', 'option.text as option_text')
     .from('prompt')
     .innerJoin('option', 'prompt.id', 'option.prompt_id')
@@ -130,7 +133,7 @@ const answer = {
 
 module.exports = {
   answer,
-  prompts,
+  promptsMap,
   getQuestions,
   getPickOneQuestions,
   getRateQuestionIds

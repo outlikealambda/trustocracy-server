@@ -80,7 +80,8 @@ app.get('/api/topic/:topicId/opinions', (req, res) => {
 app.get('/api/topic/:topicId/prompts', (req, res) => {
   const {topicId} = req.params;
 
-  rdb.prompts(topicId)
+  rdb.promptsMap(topicId)
+    .then(Object.values)
     .then(prompts => res.send(prompts))
     .catch(err => {
       log.error('error getting prompts; topic: ', topicId, err);
